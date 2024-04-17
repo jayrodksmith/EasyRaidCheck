@@ -1,6 +1,7 @@
 function Start-EasyRaidCheck{
     [CmdletBinding()]
     param (
+        # RMM Mode
         [string]$RMM                        = 'NinjaOne',
         # Ninja Custom Fields
         [string]$ninjafieldWYSIWYGdrives    = 'raidtable',          # WYSIWYG field for Ninja
