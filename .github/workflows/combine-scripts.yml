@@ -1,0 +1,80 @@
+name: Combine PowerShell Scripts for use with RMM
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+    paths:
+    - 'Public/**'
+    - 'Private/**'
+    
+jobs:
+  combine-scripts:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Combine PowerShell scripts
+      shell: pwsh
+      id: combine-scripts
+      run: |
+        $publicDirectory = 'Public'
+        $privateDirectory = 'Private'
+        $outputFilePath = 'EasyRaidCheck_RMM.ps1'
+
+        $publicFiles = Get-ChildItem -Path $publicDirectory -Filter *.ps1 -Recurse
+        $privateFiles = Get-ChildItem -Path $privateDirectory -Filter *.ps1 -Recurse
+
+        $combinedContent = ''
+        $StartEasyRaidCheckFunction = $null
+
+        # Process public files
+        foreach ($file in $publicFiles) {
+            $fileContent = Get-Content $file.FullName -Raw
+            if ($fileContent -match 'function Start-EasyRaidCheck {') {
+                $StartEasyRaidCheckFunction = $fileContent
+            } else {
+                $combinedContent += $fileContent + "`n`n"
+            }
+        }
+
+        # Process private files
+        foreach ($file in $privateFiles) {
+            $fileContent = Get-Content $file.FullName -Raw
+            # You may want to handle sensitive information in private files appropriately
+            $combinedContent += $fileContent + "`n`n"
+        }
+        
+        # Place the Start-EasyRaidCheck function at the top
+        $combinedContent = $StartEasyRaidCheckFunction + "`n`n" + $combinedContent
+        
+        # Add Start-EasyRaidCheck function call at the end of the script
+        $combinedContent += 'Start-EasyRaidCheck'
+        
+        # Check if the combined content is different from the existing content
+        $existingContent = Get-Content $outputFilePath -Raw -ErrorAction SilentlyContinue
+        
+        # Display the first 5 lines of existing content
+        Write-Host "Displaying first 5 lines of existing content"
+        $existingContent | Select-Object -First 5        
+        
+        if (Compare-Object $existingContent $combinedContent) {
+            $combinedContent | Out-File -FilePath $outputFilePath -Force
+            Write-Host "Combined script saved to: $outputFilePath"
+            echo "::set-output name=combined-changed::true"
+        } else {
+            Write-Host "Combined script unchanged. No commit or push needed."
+            echo "::set-output name=combined-changed::false"
+        }
+
+    - name: Push Changes
+      if: steps.combine-scripts.outputs.combined-changed == 'true'
+      run: |
+        git config --local user.email "actions@github.com"
+        git config --local user.name "GitHub Actions"
+        git add .
+        git commit -m "Combine PowerShell Functions into 1 script for RMM"
+        git push
