@@ -12,29 +12,29 @@ function Get-FieldsNinjaRMM {
     #>
         [CmdletBinding(SupportsShouldProcess)]
         param (
-            [string]$ninjafieldWYSIWYGdrives    = '',
-            [string]$ninjafieldraidarraystatus  = '',
-            [string]$ninjafieldraidarraydetails = ''
+            [string]$fieldWYSIWYGdrives    = '',
+            [string]$fieldraidarraystatus  = '',
+            [string]$fieldraidarraydetails = ''
         )
         # Import Ninja Powershell Module
         Write-Verbose "Importing Ninja Powershell module"
         Import-Module NJCliPSh -ErrorAction SilentlyContinue -WarningAction SilentlyContinue -verbose:$false | Out-Null
         # Test if fields exist
-        $testninjafieldWYSIWYGdrives = Ninja-Property-Get $ninjafieldWYSIWYGdrives 2>&1
+        $testninjafieldWYSIWYGdrives = Ninja-Property-Get $fieldWYSIWYGdrives 2>&1
         if ($testninjafieldWYSIWYGdrives -match "Unable to find the specified field" ){
-            Write-Host "Unable to access $ninjafieldWYSIWYGdrives field in ninja"
+            Write-Host "Unable to access $fieldWYSIWYGdrives field in ninja"
             Write-Host "Check permissions of field and that it exists"
             Set-Variable testninjafieldWYSIWYGdrives -Value $false -Scope Global -option ReadOnly -Force
         }
-        $testninjafieldraidarraystatus  = Ninja-Property-Get $ninjafieldraidarraystatus  2>&1
+        $testninjafieldraidarraystatus  = Ninja-Property-Get $fieldraidarraystatus  2>&1
         if ($testninjafieldraidarraystatus  -match "Unable to find the specified field" ){
-            Write-Host "Unable to access $ninjafieldraidarraystatus field in ninja"
+            Write-Host "Unable to access $fieldraidarraystatus field in ninja"
             Write-Host "Check permissions of field and that it exists"
             Set-Variable testninjafieldraidarraystatus -Value $false -Scope Global -option ReadOnly -Force
         }
-        $testninjafieldraidarraydetails  = Ninja-Property-Get $ninjafieldraidarraydetails  2>&1
+        $testninjafieldraidarraydetails  = Ninja-Property-Get $fieldraidarraydetails  2>&1
         if ($testninjafieldraidarraydetails  -match "Unable to find the specified field" ){
-            Write-Host "Unable to access $ninjafieldraidarraydetails field in ninja"
+            Write-Host "Unable to access $fieldraidarraydetails field in ninja"
             Write-Host "Check permissions of field and that it exists"
             Set-Variable testninjafieldraidarraydetails -Value $false -Scope Global -option ReadOnly -Force
         }

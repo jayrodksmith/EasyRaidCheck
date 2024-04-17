@@ -1,12 +1,12 @@
 function Write-ResultNinjaRMM {
     [CmdletBinding(SupportsShouldProcess)]
     param (
-        [string]$ninjafieldWYSIWYGdrives    = '',
-        [string]$ninjafieldraidarraystatus  = '',
-        [string]$ninjafieldraidarraydetails = '',
-        [string]$raidarraydetails           = '',
-        [string]$AllDrives                  = '',
-        [string]$faileddrives               = ''
+        [string]$fieldWYSIWYGdrives         = '',
+        [string]$fieldraidarraystatus       = '',
+        [string]$fieldraidarraydetails      = '',
+        [string]$resultraidarraydetails     = '',
+        [System.Collections.Generic.List[Object]]$resultAllDrives,
+        [string]$resultfaileddrives         = ''
     )
     if (-not (Get-Command -Name "Ninja-Property-Set" -ErrorAction SilentlyContinue)) {
         $errorMessage = "Error: NinjaRMM module not found, not writing to NinjaRMM."
@@ -16,28 +16,28 @@ function Write-ResultNinjaRMM {
     if (($raidarraydetails."VirtualStatus" -eq "Healthy") -and ($raidarraydetails."PhysicalStatus" -eq "Healthy")) {
         if($testninjafieldraidarraystatus -ne $false){
             Write-Verbose "Will try write raidarraystatus value"
-            Ninja-Property-Set $ninjafieldraidarraystatus "Healthy"
+            Ninja-Property-Set $fieldraidarraystatus "Healthy"
         }
         if($testninjafieldraidarraydetails -ne $false){
             Write-Verbose "Will try write raidarraydetails value"
-            $raidarraydetails | Ninja-Property-Set-Piped -Name $ninjafieldraidarraydetails
+            $resultraidarraydetails | Ninja-Property-Set-Piped -Name $fieldraidarraydetails
         }
     } else {
         if($testninjafieldraidarraystatus -ne $false){
             Write-Verbose "Will try write raidarraystatus value"
-            Ninja-Property-Set $ninjafieldraidarraystatus "Not Healthy"
+            Ninja-Property-Set $fieldraidarraystatus "Not Healthy"
         }
         if($testninjafieldraidarraydetails -ne $false){
             Write-Verbose "Will try write raidarraydetails value"
-            $raidarraydetails | Ninja-Property-Set-Piped -Name $ninjafieldraidarraydetails
+            $resultraidarraydetails | Ninja-Property-Set-Piped -Name $fieldraidarraydetails
         }
     }
     # Set WYSIWYG Custom fields
-    if($AllDrives){
+    if($resultAllDrives){
         if($testninjafieldWYSIWYGdrives -ne $false){
             Write-Verbose "Will try write WYSIWYGdrives value"
-            $htmlTable = ConvertTo-ObjectToHtmlTable -Objects $AllDrives
-            $htmlTable | Ninja-Property-Set-Piped -Name $ninjafieldWYSIWYGdrives
+            $htmlTable = ConvertTo-ObjectToHtmlTable -Objects $resultAllDrives
+            $htmlTable | Ninja-Property-Set-Piped -Name $fieldWYSIWYGdrives
         }
     }
 }

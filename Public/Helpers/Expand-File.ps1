@@ -2,7 +2,7 @@ function Expand-File{
     [CmdletBinding()]
     param (
         $file,
-        $destination,
+        $destination
     )
     Function Test-CommandExists {
         Param (

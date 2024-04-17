@@ -4,11 +4,11 @@ function Start-EasyRaidCheck{
         # RMM Mode
         [string]$RMM                        = 'NinjaOne',
         # Ninja Custom Fields
-        [string]$ninjafieldWYSIWYGdrives    = 'raidtable',          # WYSIWYG field for Ninja
-        [string]$ninjafieldraidarraystatus  = 'raidarraystatus',    # Text field for Ninja
-        [string]$ninjafieldraidarraydetails = 'raidarraydetails',   # Text field for Ninja
+        [string]$ninjafieldWYSIWYGdrives    = 'raidtablephysical',          # WYSIWYG field for Ninja
+        [string]$ninjafieldraidarraystatus  = 'raidarraystatus',            # Text field for Ninja
+        [string]$ninjafieldraidarraydetails = 'raidarraydetails',           # Text field for Ninja
         # Ninja Exit Code
-        [int]$ninjaexitcodefailure          = '999',                # Set this in your condition script result code
+        [int]$ninjaexitcodefailure          = '999',                        # Set this in your condition script result code
         # LSI Details
         [string]$lsiurl                     = "https://downloadmirror.intel.com/743783/Intel_StorCLI_007.1907.0000.0000.zip",
         [string]$lsioutput                  = "C:\temp\storcli.zip",
@@ -34,8 +34,8 @@ if ($supportedcontrollers.'Controller Type' -match "LSI"){
 }
 # Write Values to Ninja
 if($RMM -eq 'Ninjaone'){
-    Get-FieldsNinjaRMM -ninjafieldWYSIWYGdrives $ninjafieldWYSIWYGdrives -ninjafieldraidarraystatus $ninjafieldraidarraystatus -ninjafieldraidarraydetails $ninjafieldraidarraydetails
-    Write-ResultNinjaRMM -ninjafieldWYSIWYGdrives $ninjafieldWYSIWYGdrives -ninjafieldraidarraystatus $ninjafieldraidarraystatus -ninjafieldraidarraydetails $ninjafieldraidarraydetails -raidarraydetails $raidarraydetails -AllDrives $AllDrives -faileddrives $faileddrives
+    Get-FieldsNinjaRMM -fieldWYSIWYGdrives $ninjafieldWYSIWYGdrives -fieldraidarraystatus $ninjafieldraidarraystatus -fieldraidarraydetails $ninjafieldraidarraydetails
+    Write-ResultNinjaRMM -fieldWYSIWYGdrives $ninjafieldWYSIWYGdrives -fieldraidarraystatus $ninjafieldraidarraystatus -fieldraidarraydetails $ninjafieldraidarraydetails -resultraidarraydetails $raidarraydetails -resultAllDrives $AllDrives -resultfaileddrives $faileddrives
 }
 # Output results to screen
 $raidarraydetails | format-table
