@@ -15,7 +15,7 @@ function Expand-File{
                 return $true
             }
         } Catch {
-            Write-Host "$command does not exist"
+            Write-Verbose "$command does not exist"
             return $false
         } Finally {
             $ErrorActionPreference=$oldPreference
