@@ -548,7 +548,7 @@ function Write-ResultNinjaRMM {
         return $errorMessage
     }
     # Set standard Custom fields
-    if (($raidarraydetails."VirtualStatus" -eq "Healthy") -and ($raidarraydetails."PhysicalStatus" -eq "Healthy")) {
+    if (($resultraidarraydetails."VirtualStatus" -eq "Healthy") -and ($resultraidarraydetails."PhysicalStatus" -eq "Healthy")) {
         if($testninjafieldraidarraystatus -ne $false){
             Write-Verbose "Will try write raidarraystatus value"
             Ninja-Property-Set $fieldraidarraystatus "Healthy"
