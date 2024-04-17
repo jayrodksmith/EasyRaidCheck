@@ -1,7 +1,7 @@
 # Changelog for EasyRaidCheck
 ## [Unreleased]
 
-## [0.1.0] - 23-01-2024
+## [1.0.0] - 17-04-2024
 
 ### Added
 

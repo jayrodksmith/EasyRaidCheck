@@ -1,7 +1,8 @@
 function Get-RaidControllerHP{
     [CmdletBinding()]
     param (
-        [string]$hpCLILocation = 'C:\Program Files\Smart Storage Administrator\ssacli\bin\ssacli.exe'
+        [string]$hpCLILocation = 'C:\Program Files\Smart Storage Administrator\ssacli\bin\ssacli.exe',
+        [string]$controllerName = "Unknown"
     )
     
     Get-RaidControllerHPPreReq
@@ -89,8 +90,6 @@ function Get-RaidControllerHP{
     }
     $FailedDrives = $AllDrives | Where-Object -Property Status -eq 'Failed'
     if($FailedDrives) {
-        Write-Output "Failed Drive Details"
-        $FailedDrives
         $RAIDphysicalstatus = "Not Healthy"
     }
     
@@ -101,23 +100,13 @@ function Get-RaidControllerHP{
     if ($null -eq $PhysicalStatus) {
         $PhysicalStatus = "Healthy"
     }
-    if (!$ScriptError) {
-        $ScriptError = "Healthy"
-    }
-    if ($RAIDStatus -ne "Healthy"){
-    Write-Host "Drive Failure"
-    Write-Host "$RAIDStatus"
-    }
-    if ($PhysicalStatus -ne "Healthy"){
-    Write-Host "$PhysicalStatus"
-    }
     
-    $raidarraydetails = [pscustomobject][ordered]@{
-        Controller = $controllerName
-        VirtualStatus = $RAIDStatus
-        PhysicalStatus = $RAIDphysicalstatus
-    }
-    $raidarraydetails = $raidarraydetails | Format-List | Out-String
+    $raidarraydetails = New-Object System.Collections.Generic.List[Object]
+    $raidarraydetails.Add([PSCustomObject]@{
+        Controller              = $controllerName
+        VirtualStatus           = $RAIDStatus
+        PhysicalStatus          = $RAIDphysicalstatus
+    })
 
-    return $raidarraydetails, $faileddrives, $AllDrives
+    return $raidarraydetails, $AllDrives, $faileddrives
 }
