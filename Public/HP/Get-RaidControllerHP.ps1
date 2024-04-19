@@ -192,14 +192,13 @@ function Get-RaidControllerHP{
     $FailedDrives = $AllDrives | Where-Object -Property Status -eq 'Failed'
     if($FailedDrives) {
         $RAIDphysicalstatus = "Not Healthy"
+    } else {
+        $RAIDphysicalstatus = "Healthy"
     }
     
     ## Get Details of failed drive  
     if (!$RAIDStatus) {
         $RAIDStatus = "Healthy"
-    }
-    if ($null -eq $PhysicalStatus) {
-        $PhysicalStatus = "Healthy"
     }
     
     $raidarraydetails = New-Object System.Collections.Generic.List[Object]

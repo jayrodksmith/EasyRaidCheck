@@ -53,7 +53,7 @@ function Start-EasyRaidCheck{
                     $drive.'Temp' = [regex]::Match($($smartDrive.'Temperature'), '^(\d+) C').Groups[1].Value
                 }
                 $percentage = [regex]::Match($drive.'Smart Status', '\((\d+)\s*%\)').Groups[1].Value
-                if($drive.'Smart Status' -notmatch '\bGood\b'){
+                if($drive.'Smart Status' -notmatch '\bGood\b' -and $null -ne $drive.'Smart Status'){
                     $drive.'RowColour' = 'danger'
                 }
             }
