@@ -110,10 +110,10 @@ function Start-EasyRaidCheck{
     }
     # Output results to screen
     $raidarraydetails | format-table
-    $AllDrives | format-table
+    $AllDrives | Select-object Array,DriveNumber,Port,Bay,Status,Reason,Size,Interface,Serial,Model,Temp,'Smart Status' | format-table * -autosize
     if($faileddrives){
         Write-Output "Failed Drive Information"
-        $faileddrives | format-table
+        $faileddrives | Select-object Array,DriveNumber,Port,Bay,Status,Reason,Size,Interface,Serial,Model,Temp,'Smart Status' | format-table * -autosize
         exit $ninjaexitcodefailure
     } else {
         exit 0
