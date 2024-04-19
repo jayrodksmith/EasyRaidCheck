@@ -58,7 +58,7 @@ function Start-EasyRaidCheck{
         # HP Details
         [string]$hpurl                      = "https://downloads.hpe.com/pub/softlib2/software1/sc-windows/p955544928/v183348/cp044527.exe",
         [string]$hpoutput                   = "C:\temp\cp044527.exe", 
-        [string]$hpCLILocation              = 'C:\Program Files\Smart Storage Administrator\ssacli\bin\ssacli.exe' # Dont change this, HP tools is a installed program
+        [string]$hpCLILocation              = 'C:\Program Files\Smart Storage Administrator\ssacli\bin\ssacli.exe', # Dont change this, HP tools is a installed program
         [boolean]$Smartinfo                 = $true # This will download CrystalDiskInfo
 
     )
