@@ -70,19 +70,21 @@ function Get-RaidControllerHP{
                 default { "unknown" } 
         }
         $AllDrives.Add([PSCustomObject]@{
-            Array = $Array
-            DriveNumber = $PhysicalStatus_drivenumber
-            Port = $port
-            Bay = $bay
-            Status = $status
-            Reason = $reason
-            Size = $size
-            Interface = $interface
-            Serial = $serialNumber
-            Model = $model
-            'Temp' = $Currenttemperature
-            'Max Temp' = $Maximumtemperature
-            RowColour = $RowColour
+            Array                       = $Array
+            DriveNumber                 = $PhysicalStatus_drivenumber
+            Port                        = $port
+            Bay                         = $bay
+            Status                      = $status
+            Reason                      = $reason
+            Size                        = $size
+            Interface                   = $interface
+            Serial                      = $serialNumber
+            Model                       = $model
+            'Temp'                      = $Currenttemperature
+            'Max Temp'                  = $Maximumtemperature
+            'Smart Status'              = $null
+            'Power On Hours'            = $null
+            RowColour                   = $RowColour
         })
     }
     if ($hpraidstatus -like "*Failure*" -or $hpraidstatus -like "*Failed*" -or $hpraidstatus -like "*Error*" -or $hpraidstatusslot_array -like "*Failed*" -or $hpraidstatusslot_pd -like "*Failed*") {

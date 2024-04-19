@@ -124,6 +124,8 @@ function Get-RaidControllerLSI{
             Model               = $($physicaldrive.Model)
             'Temp'              = $null
             'Max Temp'          = $null
+            'Smart Status'      = $null
+            'Power On Hours'    = $null
             RowColour           = $RowColour
         })    
     }
