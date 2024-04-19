@@ -123,11 +123,109 @@ function Get-RaidControllerHP{
     [CmdletBinding()]
     param (
         [string]$hpCLILocation = 'C:\Program Files\Smart Storage Administrator\ssacli\bin\ssacli.exe',
+        [string]$hpCLILocation2 = 'C:\Program Files\Smart Storage Administrator\ssaducli\bin\ssaducli.exe',
+        [string]$hpclireport = "C:\temp\HPReport.txt",
         [string]$controllerName = "Unknown"
+
     )
     
     Get-RaidControllerHPPreReq
+
     $hpraidstatus = & $hpCLILocation ctrl all show status | Out-String
+    $hpraidstatus2 = & $hpCLILocation2 -adu -txt -f $hpclireport
+
+    ######## Get HP Smart details Start
+        $objects = @()
+        $objects2 = @()
+
+        # Initialize object variables
+        $object = $null
+        $object2 = $null
+        Get-Content $hpclireport | ForEach-Object {
+            $line = $_.Trim()
+        
+            # Check if the line contains the drive ID
+            if ($line -match 'Physical Drive \(.*?\) (\d+I:\d+:\d+) : Workload Information') {
+                # If previous object exists, add it to the list
+                if ($object -ne $null) {
+                    $objects += $object
+                }
+                
+                # Create a new object for the current drive
+                $driveId = $matches[1]
+                $object = New-Object -TypeName PSObject
+                $object | Add-Member -MemberType NoteProperty -Name DriveId -Value $driveId
+                Write-Verbose "Matched Drive $driveId in smart loop"
+            } elseif ($object -ne $null) {
+                # Store each matched line into the object
+                if ($line -match '^(Power-on Hours|Total LBA Read|Total LBA Written|Workload Rating \(TB/Yr\)|Month\(s\) of Operation|Total Bytes Read \(TB\)|Total Bytes Written \(TB\)|Total Combined Read/Write Bytes \(TB\)|Workload Rate \(TB/Month\)|Projected Rate \(TB/Year\)|SSD Usage Remaining \(%\))\s+(.*)$') {
+                    $propertyName = $matches[1].Trim()
+                    $propertyValue = $matches[2].Trim()
+                    $object | Add-Member -MemberType NoteProperty -Name $propertyName -Value $propertyValue
+                }
+        
+                # Check if all lines are stored, then add the object to the list
+                if ($object.psobject.Properties.Count -eq 11) {
+                    $objects += $object
+                    
+                    # Reset object for the next drive
+                    $object = $null
+                }
+            }
+        }
+        # Add the last object to the list if it exists
+        if ($object -ne $null) {
+            $objects += $object
+        }
+        # Regular expression patterns for matching drive ID and properties
+        $driveIdPattern = 'Physical Drive \(.*?\) (\d+I:\d+:\d+) : Monitor and Performance Statistics \(Since Factory\)'
+        $propertyPattern = '^(Serial Number|Firmware Revision|Seek Errors|Read Errors Hard|Write Errors Hard|Media Failures|Hardware Errors|Spin Up Failures|Predictive Failure Errors)\s+(.*)$'
+
+        Get-Content $hpclireport | ForEach-Object {
+            $line = $_.Trim()
+
+            # Check if the line contains the drive ID
+            if ($line -match $driveIdPattern) {
+                # If previous object exists, add it to the list
+                if ($object2 -ne $null) {
+                    $objects2 += $object2
+                }
+                
+                # Create a new object for the current drive
+                $driveId = $matches[1]
+                $object2 = [PSCustomObject]@{ DriveId = $driveId }
+            } elseif ($object2 -ne $null -and $line -match $propertyPattern) {
+                # Store each matched line into the object
+                $propertyName = $matches[1].Trim()
+                $propertyValue = $matches[2].Trim()
+                $object2 | Add-Member -MemberType NoteProperty -Name $propertyName -Value $propertyValue
+
+                # If all properties are collected, add the object to the list
+                if ($propertyName -eq 'Predictive Failure Errors') {
+                    $objects2 += $object2
+                    $object2 = $null  # Reset object2 for the next drive
+                }
+            }
+        }
+        $hpsmartdetails = foreach ($obj in $objects) {
+            $matchingObject = $objects2 | Where-Object { $_.driveid -eq $obj.driveid }
+        
+            if ($matchingObject) {
+                $mergedProperties = @{}
+        
+                $obj.PSObject.Properties | ForEach-Object {
+                    $mergedProperties[$_.Name] = $_.Value
+                }
+        
+                $matchingObject.PSObject.Properties | ForEach-Object {
+                    $mergedProperties[$_.Name] = $_.Value
+                }
+        
+                [PSCustomObject]$mergedProperties
+            }
+        }
+    ######## Get HP Smart details End
+
     # Define the regex pattern to match "Slot X" where X is a number
     $pattern = "Slot (\d+)"
 
@@ -151,6 +249,7 @@ function Get-RaidControllerHP{
     $AllDrives = New-Object System.Collections.Generic.List[Object]
     $PhysicalStatus_drivenumbers = ($PhysicalStatus -split "`n" | Select-String -Pattern "physicaldrive" | ForEach-Object { [regex]::Match($_, '(\d+[A-Z]:\d+:\d+)').Value })
     foreach ($PhysicalStatus_drivenumber in $PhysicalStatus_drivenumbers) {
+        Write-Verbose "Creating object for $PhysicalStatus_drivenumber"
         $hpraidstatusslot_pd_details = & $hpCLILocation ctrl slot=$slotNumber pd "$PhysicalStatus_drivenumber" show detail | Out-String
         $ArrayLine = ($hpraidstatusslot_pd_details -split "`n" | Select-String -Pattern "Array")
         $Array = if ($ArrayLine) { $ArrayLine.Line.TrimStart().Split(" ", 2)[-1].Trim() } else { $null }
@@ -204,7 +303,7 @@ function Get-RaidControllerHP{
             'Temp'                      = $Currenttemperature
             'Max Temp'                  = $Maximumtemperature
             'Smart Status'              = $null
-            'Power On Hours'            = $null
+            'Power On Hours'            = ( $hpsmartdetails | Where-Object -Property 'Serial Number' -eq $serialNumber | Select-Object -ExpandProperty 'Power-on Hours' )
             RowColour                   = $RowColour
         })
     }
@@ -237,21 +336,36 @@ function Get-RaidControllerHP{
 function Get-RaidControllerHPPreReq {
     [CmdletBinding()]
     param (
-        $hpurl = "https://downloads.hpe.com/pub/softlib2/software1/sc-windows/p955544928/v183348/cp044527.exe", # URL for HP Tools
+        $hpurl = "https://downloads.hpe.com/pub/softlib2/software1/sc-windows/p955544928/v183348/cp044527.exe", # URL for HP CLI
+        $hpurl2 = "https://downloads.hpe.com/pub/softlib2/software1/sc-windows/p2024036775/v183350/cp044528.exe",# URL for HP ADU
         $hpoutput = "C:\temp\cp044527.exe",
-        $hpCLILocation = 'C:\Program Files\Smart Storage Administrator\ssacli\bin\ssacli.exe'
+        $hpoutput2 = "C:\temp\cp044528.exe",
+        $hpCLILocation = 'C:\Program Files\Smart Storage Administrator\ssacli\bin\ssacli.exe',
+        $hpCLILocation2 = 'C:\Program Files\Smart Storage Administrator\ssaducli\bin\ssaducli.exe'
     )
     if (-not(Test-Path -Path $hpCLILocation -PathType Leaf)) {
         [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12
         try {
-            Write-Verbose "HP Tools downloading and installing"
+            Write-Verbose "HP CLI downloading and installing"
             Invoke-WebRequest -Uri $hpurl -OutFile $hpoutput
             Start-Process -FilePath 'C:\temp\cp044527.exe' -ArgumentList "/s"
         }catch{
             Write-Error "An error occurred: $_"
         }
     }else{
-        Write-Verbose "HP Tools already installed"
+        Write-Verbose "HP CLI already installed"
+    }
+    if (-not(Test-Path -Path $hpCLILocation2 -PathType Leaf)) {
+        [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12
+        try {
+            Write-Verbose "HP ADU downloading and installing"
+            Invoke-WebRequest -Uri $hpurl2 -OutFile $hpoutput2
+            Start-Process -FilePath 'C:\temp\cp044528.exe' -ArgumentList "/s"
+        }catch{
+            Write-Error "An error occurred: $_"
+        }
+    }else{
+        Write-Verbose "HP ADU already installed"
     }
 }
 
