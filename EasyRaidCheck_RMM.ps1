@@ -95,7 +95,7 @@ function Start-EasyRaidCheck{
                     $drive.'Temp' = [regex]::Match($($smartDrive.'Temperature'), '^(\d+) C').Groups[1].Value
                 }
                 $percentage = [regex]::Match($drive.'Smart Status', '\((\d+)\s*%\)').Groups[1].Value
-                if($drive.'Smart Status' -notmatch '\bGood\b'){
+                if($drive.'Smart Status' -notmatch '\bGood\b' -and $null -ne $drive.'Smart Status'){
                     $drive.'RowColour' = 'danger'
                 }
             }
@@ -313,14 +313,13 @@ function Get-RaidControllerHP{
     $FailedDrives = $AllDrives | Where-Object -Property Status -eq 'Failed'
     if($FailedDrives) {
         $RAIDphysicalstatus = "Not Healthy"
+    } else {
+        $RAIDphysicalstatus = "Healthy"
     }
     
     ## Get Details of failed drive  
     if (!$RAIDStatus) {
         $RAIDStatus = "Healthy"
-    }
-    if ($null -eq $PhysicalStatus) {
-        $PhysicalStatus = "Healthy"
     }
     
     $raidarraydetails = New-Object System.Collections.Generic.List[Object]
