@@ -84,7 +84,6 @@ function Start-EasyRaidCheck{
         $smartalldrives, $smartFailedDrives                                                 = Get-SMARTInfo
         # Check existing results and merge results if found.
         foreach ($drive in $alldrives) {
-            Write-Output "Checking $($drive.Serial)"
             $serial = $($drive.Serial)
             $smartDrive = $smartalldrives | Where-Object { $_.'Serial Number' -match $serial }
         
