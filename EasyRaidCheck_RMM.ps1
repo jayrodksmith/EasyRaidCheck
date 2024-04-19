@@ -768,7 +768,7 @@ function Write-ResultNinjaRMM {
         [string]$fieldWYSIWYGdrives         = '',
         [string]$fieldraidarraystatus       = '',
         [string]$fieldraidarraydetails      = '',
-        [string]$resultraidarraydetails     = '',
+        [System.Collections.Generic.List[Object]]$resultraidarraydetails     = '',
         [System.Collections.Generic.List[Object]]$resultAllDrives,
         [string]$resultfaileddrives         = ''
     )
@@ -777,7 +777,7 @@ function Write-ResultNinjaRMM {
         return $errorMessage
     }
     # Set standard Custom fields
-    if (($resultraidarraydetails."VirtualStatus" -eq "Healthy") -and ($resultraidarraydetails."PhysicalStatus" -eq "Healthy")) {
+    if (($($resultraidarraydetails."VirtualStatus") -eq "Healthy") -and ($($resultraidarraydetails."PhysicalStatus") -eq "Healthy")) {
         if($testninjafieldraidarraystatus -ne $false){
             Write-Verbose "Will try write raidarraystatus value"
             Ninja-Property-Set $fieldraidarraystatus "Healthy"
