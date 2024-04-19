@@ -59,36 +59,65 @@ function Start-EasyRaidCheck{
         [string]$hpurl                      = "https://downloads.hpe.com/pub/softlib2/software1/sc-windows/p955544928/v183348/cp044527.exe",
         [string]$hpoutput                   = "C:\temp\cp044527.exe", 
         [string]$hpCLILocation              = 'C:\Program Files\Smart Storage Administrator\ssacli\bin\ssacli.exe' # Dont change this, HP tools is a installed program
+        [boolean]$Smartinfo                 = $true # This will download CrystalDiskInfo
 
     )
+    # Determine if the system is virtual
+    $IsVirtual = @(Get-CimInstance -ClassName Win32_ComputerSystem | Where-Object { $_.Model -eq 'VMware Virtual Platform' -or $_.Model -eq 'Virtual Machine' }).Count -gt 0
+    if($IsVirtual){
+        return "Not Running because Virtual Machine"
+    }
+    $supportedcontrollers, $controllers = Get-RaidControllers
 
-$supportedcontrollers, $controllers = Get-RaidControllers
+    if ($supportedcontrollers.'Controller Type' -match "LSI"){
+        # LSI
+        $raidarraydetails, $AllDrives, $FailedDrives, $FailedVirtualDrives, $MissingDrives  = Get-RaidControllerLSI -ControllerName ($($supportedcontrollers.'Controller Name') | Select-object -first 1)
+    } elseif ($supportedcontrollers.'Controller Type' -match "HP"){
+        # HP
+        $raidarraydetails, $AllDrives, $faileddrives                                        = Get-RaidControllerhp -ControllerName ($($supportedcontrollers.'Controller Name') | Select-object -first 1)
+    } else {
+        Write-Output "No Supported Controllers"
+        return $controllers
+    }
+    # Retrieve Smart Details using CrystalDiskInfo if set to true
+    if($Smartinfo -eq $true){
+        $smartalldrives, $smartFailedDrives                                                 = Get-SMARTInfo
+        # Check existing results and merge results if found.
+        foreach ($drive in $alldrives) {
+            Write-Output "Checking $($drive.Serial)"
+            $serial = $($drive.Serial)
+            $smartDrive = $smartalldrives | Where-Object { $_.'Serial Number' -match $serial }
+        
+            if ($smartDrive) {
+                # Merge existing fields from $smartalldrives into $alldrives and set danger flag if required
+                $drive.'Smart Status' = $($smartDrive.'Health Status')
+                $drive.'Power On Hours' = $($smartDrive.'Power On Hours')
+                if($null -eq $drive.'Temp'){
+                    $drive.'Temp' = [regex]::Match($($smartDrive.'Temperature'), '^(\d+) C').Groups[1].Value
+                }
+                $percentage = [regex]::Match($drive.'Smart Status', '\((\d+)\s*%\)').Groups[1].Value
+                if($drive.'Smart Status' -notmatch '\bGood\b'){
+                    $drive.'RowColour' = 'danger'
+                }
+            }
+        }
+    }
 
-if ($supportedcontrollers.'Controller Type' -match "LSI"){
-    # LSI
-    $raidarraydetails, $AllDrives, $FailedDrives, $FailedVirtualDrives, $MissingDrives          = Get-RaidControllerLSI -ControllerName ($($supportedcontrollers.'Controller Name') | Select-object -first 1)
-} elseif ($supportedcontrollers.'Controller Type' -match "HP"){
-    # HP
-    $raidarraydetails, $AllDrives, $faileddrives                                                = Get-RaidControllerhp -ControllerName ($($supportedcontrollers.'Controller Name') | Select-object -first 1)
-} else {
-    Write-Output "No Supported Controllers"
-    return $controllers
-}
-# Write Values to Ninja
-if($RMM -eq 'Ninjaone'){
-    Get-FieldsNinjaRMM -fieldWYSIWYGdrives $ninjafieldWYSIWYGdrives -fieldraidarraystatus $ninjafieldraidarraystatus -fieldraidarraydetails $ninjafieldraidarraydetails
-    Write-ResultNinjaRMM -fieldWYSIWYGdrives $ninjafieldWYSIWYGdrives -fieldraidarraystatus $ninjafieldraidarraystatus -fieldraidarraydetails $ninjafieldraidarraydetails -resultraidarraydetails $raidarraydetails -resultAllDrives $AllDrives -resultfaileddrives $faileddrives
-}
-# Output results to screen
-$raidarraydetails | format-table
-$AllDrives | format-table
-if($faileddrives){
-    Write-Output "Failed Drive Information"
-    $faileddrives | format-table
-    exit $ninjaexitcodefailure
-} else {
-    exit 0
-}
+    # Write Values to Ninja
+    if($RMM -eq 'Ninjaone'){
+        Get-FieldsNinjaRMM -fieldWYSIWYGdrives $ninjafieldWYSIWYGdrives -fieldraidarraystatus $ninjafieldraidarraystatus -fieldraidarraydetails $ninjafieldraidarraydetails
+        Write-ResultNinjaRMM -fieldWYSIWYGdrives $ninjafieldWYSIWYGdrives -fieldraidarraystatus $ninjafieldraidarraystatus -fieldraidarraydetails $ninjafieldraidarraydetails -resultraidarraydetails $raidarraydetails -resultAllDrives $AllDrives -resultfaileddrives $faileddrives
+    }
+    # Output results to screen
+    $raidarraydetails | format-table
+    $AllDrives | format-table
+    if($faileddrives){
+        Write-Output "Failed Drive Information"
+        $faileddrives | format-table
+        exit $ninjaexitcodefailure
+    } else {
+        exit 0
+    }
 }
 
 function Get-RaidControllerHP{
@@ -163,19 +192,21 @@ function Get-RaidControllerHP{
                 default { "unknown" } 
         }
         $AllDrives.Add([PSCustomObject]@{
-            Array = $Array
-            DriveNumber = $PhysicalStatus_drivenumber
-            Port = $port
-            Bay = $bay
-            Status = $status
-            Reason = $reason
-            Size = $size
-            Interface = $interface
-            Serial = $serialNumber
-            Model = $model
-            'Temp' = $Currenttemperature
-            'Max Temp' = $Maximumtemperature
-            RowColour = $RowColour
+            Array                       = $Array
+            DriveNumber                 = $PhysicalStatus_drivenumber
+            Port                        = $port
+            Bay                         = $bay
+            Status                      = $status
+            Reason                      = $reason
+            Size                        = $size
+            Interface                   = $interface
+            Serial                      = $serialNumber
+            Model                       = $model
+            'Temp'                      = $Currenttemperature
+            'Max Temp'                  = $Maximumtemperature
+            'Smart Status'              = $null
+            'Power On Hours'            = $null
+            RowColour                   = $RowColour
         })
     }
     if ($hpraidstatus -like "*Failure*" -or $hpraidstatus -like "*Failed*" -or $hpraidstatus -like "*Error*" -or $hpraidstatusslot_array -like "*Failed*" -or $hpraidstatusslot_pd -like "*Failed*") {
@@ -227,7 +258,78 @@ function Get-RaidControllerHPPreReq {
 
 ## Intial Code Here
 
-## Intial Code Here
+function Get-SMARTInfo {
+    param(
+        $CDIPath = "C:\temp\ninjarmm\crystaldiskinfo\"
+    )
+    
+    $CDIExecutable = Join-Path -Path $CDIPath -ChildPath 'DiskInfo64.exe'
+    Get-SMARTPreReq -crystalLocation $CDIExecutable
+
+    try {
+        Start-Process -FilePath $CDIExecutable -ArgumentList '/CopyExit' -Wait
+    }
+    catch {
+        Write-Error "An error occurred: $_"
+    }
+    
+    $warning = $false
+    $DiskInfoRaw = Get-Content (Join-Path -Path $CDIPath -ChildPath 'DiskInfo.txt') -Raw
+    # Line Exclusions to lower file size
+    $excludePatterns = @(
+        '^000:',
+        '^(0x)?[0-9A-Fa-f]+:',
+        '^-- IDENTIFY'
+        '^-- SMART'
+        '^-- SMART'
+        '^\s{5}\+0'
+        '^\s{8}0'
+        '^\s*$' 
+    )
+    $filteredContent = $DiskInfoRaw -split "`n" | Where-Object { $line = $_; -not ($excludePatterns | Where-Object { $line -match $_ }) }
+    $DiskInfo = $filteredContent -join "`n"
+    $DriveInfoRegex = [regex] '(?m)(?<=\r?\n.+)(?:\r?\n^\s*(?<key>.+)\s:\s(?<value>.+))+(?=[\r\n\s]+-- S\.M\.A\.R\.T\.)'
+    $smartalldrives = New-Object 'System.Collections.Generic.List[Object]'
+    $i = 0
+    
+    foreach ($Drive in $DriveInfoRegex.Matches($DiskInfo)) {
+        $DriveOutput = [ordered]@{}
+        $Keys = $Drive.Groups['key'].Captures.Value
+        $Values = $Drive.Groups['value'].Captures.Value
+        for ($j = 0; $j -lt $Keys.Count; $j++) {
+            $DriveOutput[$Keys[$j]] = $Values[$j]
+        }
+        $i++
+        $smartalldrives.Add([PSCustomObject]$DriveOutput)
+    }
+
+    $smartFailedDrives = $smartAllDrives | Where-Object { $_."Health Status" -notlike "*Good*" }
+
+    return $smartalldrives, $smartFailedDrives
+}
+
+
+function Get-SMARTPreReq {
+    [CmdletBinding()]
+    param (
+        $crystalurl = "https://ixpeering.dl.sourceforge.net/project/crystaldiskinfo/9.2.3/CrystalDiskInfo9_2_3.zip",
+        $crystaloutput = "C:\temp\CrystalDiskInfo.zip",
+        $crystalLocation = "C:\temp\ninjarmm\crystaldiskinfo\DiskInfo64.exe",
+        $crystalextract = "C:\temp\ninjarmm\crystaldiskinfo"
+    )
+    if (-not(Test-Path -Path $crystalLocation -PathType Leaf)) {
+        [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12
+        try {
+            Write-Verbose "Extracting CrystalDiskInfo"
+            Invoke-WebRequest -Uri $crystalurl -OutFile $crystaloutput
+            Expand-File -File $crystaloutput -Destination $crystalextract
+        }catch{
+            Write-Error "An error occurred: $_"
+        }
+    }else{
+        Write-Verbose "CrystalDiskInfo already exists"
+    }
+}
 
 function Get-RaidControllerLSI{
     [CmdletBinding()]
@@ -355,6 +457,8 @@ function Get-RaidControllerLSI{
             Model               = $($physicaldrive.Model)
             'Temp'              = $null
             'Max Temp'          = $null
+            'Smart Status'      = $null
+            'Power On Hours'    = $null
             RowColour           = $RowColour
         })    
     }
