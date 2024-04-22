@@ -6,16 +6,11 @@ function Get-RaidControllerPERCPreReq {
         $percCLILocation = "C:\ProgramData\EasyRaidCheck\Dell\perccli64.exe",
         $percfolder = "C:\ProgramData\EasyRaidCheck\Dell"
     )
-
     # Check if the folder exists
     if (-not (Test-Path -Path $percfolder)) {
         # If it doesn't exist, create it
-        New-Item -Path $percfolder -ItemType Directory
-        Write-Output "Folder created at $folderPath"
-    } else {
-        Write-Output "Folder already exists at $folderPath"
-    }
-
+        $newfolder = New-Item -Path $percfolder -ItemType Directory -erroraction SilentlyContinue | Out-null
+    } 
     if (-not(Test-Path -Path $percCLILocation -PathType Leaf)) {
         [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12
         try {
