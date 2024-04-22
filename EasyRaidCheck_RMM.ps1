@@ -127,7 +127,7 @@ function Start-EasyRaidCheck{
                 }
             }
         } else {
-                $AllDrives = $smartalldrive
+                $AllDrives = $smartalldrives
                 $faileddrives = $smartFailedDrives
         }
     }
