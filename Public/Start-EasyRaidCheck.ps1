@@ -42,31 +42,40 @@ function Start-EasyRaidCheck{
         $raidarraydetails, $AllDrives, $faileddrives                                        = Get-RaidControllerPERC -ControllerName ($($supportedcontrollers.'Controller Name') | Select-object -first 1)
     } else {
         Write-Output "No Supported Controllers"
-        return $controllers
+        $supported = $false
+        $raidarraydetails = New-Object System.Collections.Generic.List[Object]
+        $raidarraydetails.Add([PSCustomObject]@{
+            Supported          = $false
+        })
+
     }
     # Retrieve Smart Details using CrystalDiskInfo if set to true
     if($Smartinfo -eq $true){
         $smartalldrives, $smartFailedDrives                                                 = Get-SMARTInfo
         # Check existing results and merge results if found.
-        foreach ($drive in $alldrives) {
-            $serial = $($drive.Serial)
-            $smartDrive = $smartalldrives | Where-Object { $_.'Serial Number' -match $serial }
-        
-            if ($smartDrive) {
-                # Merge existing fields from $smartalldrives into $alldrives and set danger flag if required
-                $drive.'Smart Status' = $($smartDrive.'Health Status')
-                $drive.'Power On Hours' = $($smartDrive.'Power On Hours')
-                if($null -eq $drive.'Temp'){
-                    $drive.'Temp' = [regex]::Match($($smartDrive.'Temperature'), '^(\d+) C').Groups[1].Value
-                }
-                $percentage = [regex]::Match($drive.'Smart Status', '\((\d+)\s*%\)').Groups[1].Value
-                if($drive.'Smart Status' -notmatch '\bGood\b' -and $null -ne $drive.'Smart Status'){
-                    $drive.'RowColour' = 'danger'
+        if ($supported -ne $false){
+            foreach ($drive in $alldrives) {
+                $serial = $($drive.Serial)
+                $smartDrive = $smartalldrives | Where-Object { $_.'Serial Number' -match $serial }
+            
+                if ($smartDrive) {
+                    # Merge existing fields from $smartalldrives into $alldrives and set danger flag if required
+                    $drive.'Smart Status' = $($smartDrive.'Health Status')
+                    $drive.'Power On Hours' = $($smartDrive.'Power On Hours')
+                    if($null -eq $drive.'Temp'){
+                        $drive.'Temp' = [regex]::Match($($smartDrive.'Temperature'), '^(\d+) C').Groups[1].Value
+                    }
+                    $percentage = [regex]::Match($drive.'Smart Status', '\((\d+)\s*%\)').Groups[1].Value
+                    if($drive.'Smart Status' -notmatch '\bGood\b' -and $null -ne $drive.'Smart Status'){
+                        $drive.'RowColour' = 'danger'
+                    }
                 }
             }
+        } else {
+                $AllDrives = $smartalldrive
+                $faileddrives = $smartFailedDrives
         }
     }
-
     # Write Values to Ninja
     if($RMM -eq 'Ninjaone'){
         Get-FieldsNinjaRMM -fieldWYSIWYGdrives $ninjafieldWYSIWYGdrives -fieldraidarraystatus $ninjafieldraidarraystatus -fieldraidarraydetails $ninjafieldraidarraydetails
@@ -74,10 +83,19 @@ function Start-EasyRaidCheck{
     }
     # Output results to screen
     $raidarraydetails | format-table
-    $AllDrives | Select-object Array,DriveNumber,Port,Bay,Status,Reason,Size,Interface,Serial,Model,Temp,'Smart Status' | format-table * -autosize
+    if($supported -ne $false) {
+        $AllDrives | Select-object Array,DriveNumber,Port,Bay,Status,Reason,Size,Interface,Serial,Model,Temp,'Smart Status' | format-table * -autosize
+    } else{
+        $AllDrives | format-table * -autosize
+    }
+    
     if($faileddrives){
         Write-Output "Failed Drive Information"
-        $faileddrives | Select-object Array,DriveNumber,Port,Bay,Status,Reason,Size,Interface,Serial,Model,Temp,'Smart Status' | format-table * -autosize
+        if($supported -ne $false) {
+            $faileddrives | Select-object Array,DriveNumber,Port,Bay,Status,Reason,Size,Interface,Serial,Model,Temp,'Smart Status' | format-table * -autosize
+        }else{
+            $faileddrives | format-table * -autosize
+        }
         exit $ninjaexitcodefailure
     } else {
         exit 0

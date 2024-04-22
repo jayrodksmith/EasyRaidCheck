@@ -5,7 +5,7 @@
 
 ### Added
 
-- Added detection of PERC based controllers, perccli is stored on this repository
+- Added detection of PERC (Dell) based controllers, perccli is stored on this repository
 
 ## [1.1.0] - 17-04-2024
 

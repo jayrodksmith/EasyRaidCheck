@@ -13,23 +13,25 @@ function Write-ResultNinjaRMM {
         return $errorMessage
     }
     # Set standard Custom fields
-    if (($($resultraidarraydetails."VirtualStatus") -eq "Healthy") -and ($($resultraidarraydetails."PhysicalStatus") -eq "Healthy")) {
-        if($testninjafieldraidarraystatus -ne $false){
-            Write-Verbose "Will try write raidarraystatus value"
-            Ninja-Property-Set $fieldraidarraystatus "Healthy"
-        }
-        if($testninjafieldraidarraydetails -ne $false){
-            Write-Verbose "Will try write raidarraydetails value"
-            $resultraidarraydetails | Ninja-Property-Set-Piped -Name $fieldraidarraydetails
-        }
-    } else {
-        if($testninjafieldraidarraystatus -ne $false){
-            Write-Verbose "Will try write raidarraystatus value"
-            Ninja-Property-Set $fieldraidarraystatus "Not Healthy"
-        }
-        if($testninjafieldraidarraydetails -ne $false){
-            Write-Verbose "Will try write raidarraydetails value"
-            $resultraidarraydetails | Ninja-Property-Set-Piped -Name $fieldraidarraydetails
+    if ($resultraidarraydetails.supported -ne $false) {
+        if (($($resultraidarraydetails."VirtualStatus") -eq "Healthy") -and ($($resultraidarraydetails."PhysicalStatus") -eq "Healthy")) {
+            if($testninjafieldraidarraystatus -ne $false){
+                Write-Verbose "Will try write raidarraystatus value"
+                Ninja-Property-Set $fieldraidarraystatus "Healthy"
+            }
+            if($testninjafieldraidarraydetails -ne $false){
+                Write-Verbose "Will try write raidarraydetails value"
+                $resultraidarraydetails | Ninja-Property-Set-Piped -Name $fieldraidarraydetails
+            }
+        } else {
+            if($testninjafieldraidarraystatus -ne $false){
+                Write-Verbose "Will try write raidarraystatus value"
+                Ninja-Property-Set $fieldraidarraystatus "Not Healthy"
+            }
+            if($testninjafieldraidarraydetails -ne $false){
+                Write-Verbose "Will try write raidarraydetails value"
+                $resultraidarraydetails | Ninja-Property-Set-Piped -Name $fieldraidarraydetails
+            }
         }
     }
     # Set WYSIWYG Custom fields
