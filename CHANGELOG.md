@@ -1,6 +1,12 @@
 # Changelog for EasyRaidCheck
 ## [Unreleased]
 
+## [1.3.0] - 22-04-2024
+
+### Added
+
+- Added to store drives found by smart by default, if no raid controllers found
+
 ## [1.2.0] - 22-04-2024
 
 ### Added
