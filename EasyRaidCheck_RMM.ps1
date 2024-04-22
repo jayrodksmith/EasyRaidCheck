@@ -360,8 +360,13 @@ function Get-RaidControllerHPPreReq {
         $hpoutput = "C:\temp\cp044527.exe",
         $hpoutput2 = "C:\temp\cp044528.exe",
         $hpCLILocation = 'C:\Program Files\Smart Storage Administrator\ssacli\bin\ssacli.exe',
-        $hpCLILocation2 = 'C:\Program Files\Smart Storage Administrator\ssaducli\bin\ssaducli.exe'
+        $hpCLILocation2 = 'C:\Program Files\Smart Storage Administrator\ssaducli\bin\ssaducli.exe',
+        $hpfolder = "C:\ProgramData\EasyRaidCheck\HP"
     )
+    if (-not (Test-Path -Path $hpfolder)) {
+        # If it doesn't exist, create it
+        $newfolder = New-Item -Path $hpfolder -ItemType Directory -erroraction SilentlyContinue | Out-null
+    } 
     if (-not(Test-Path -Path $hpCLILocation -PathType Leaf)) {
         [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12
         try {
@@ -636,15 +641,21 @@ function Get-RaidControllerLSIPreReq {
     [CmdletBinding()]
     param (
         $lsiurl = "https://downloadmirror.intel.com/743783/Intel_StorCLI_007.1907.0000.0000.zip", # URL for StorCLI
-        $lsioutput = "C:\temp\storcli.zip",
-        $lsiCLILocation = 'C:\temp\Intel_StorCLI_007.1907.0000.0000\Unified_storcli_all_os\Windows\storcli64.exe'
+        $lsioutput = "$($env:windir)\temp\storcli.zip",
+        $lsiCLILocation = 'C:\ProgramData\EasyRaidCheck\LSI\Intel_StorCLI_007.1907.0000.0000\Unified_storcli_all_os\Windows\storcli64.exe',
+        $lsifolder = "C:\ProgramData\EasyRaidCheck\LSI"
     )
+    # Check if the folder exists
+    if (-not (Test-Path -Path $lsifolder)) {
+        # If it doesn't exist, create it
+        $newfolder = New-Item -Path $lsifolder -ItemType Directory -erroraction SilentlyContinue | Out-null
+    } 
     if (-not(Test-Path -Path $lsiCLILocation -PathType Leaf)) {
         [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12
         try {
             Write-Verbose "LSI Tools downloading and extracting"
             Invoke-WebRequest -Uri $lsiurl -OutFile $lsioutput
-            Expand-File -File $lsioutput -Destination "C:\temp"
+            Expand-File -File $lsioutput -Destination $lsifolder
         }catch{
             Write-Error "An error occurred: $_"
         }
@@ -818,16 +829,11 @@ function Get-RaidControllerPERCPreReq {
         $percCLILocation = "C:\ProgramData\EasyRaidCheck\Dell\perccli64.exe",
         $percfolder = "C:\ProgramData\EasyRaidCheck\Dell"
     )
-
     # Check if the folder exists
     if (-not (Test-Path -Path $percfolder)) {
         # If it doesn't exist, create it
-        New-Item -Path $percfolder -ItemType Directory
-        Write-Output "Folder created at $folderPath"
-    } else {
-        Write-Output "Folder already exists at $folderPath"
-    }
-
+        $newfolder = New-Item -Path $percfolder -ItemType Directory -erroraction SilentlyContinue | Out-null
+    } 
     if (-not(Test-Path -Path $percCLILocation -PathType Leaf)) {
         [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12
         try {
