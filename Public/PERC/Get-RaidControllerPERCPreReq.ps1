@@ -1,7 +1,7 @@
 function Get-RaidControllerPERCPreReq {
     [CmdletBinding()]
     param (
-        $percurl = "https://raw.githubusercontent.com/jayrodksmith/EasyRaidCheck/main/public/PERC/perccli64.exe", # URL for StorCLI
+        $percurl = "https://raw.githubusercontent.com/jayrodksmith/EasyRaidCheck/main/Public/PERC/perccli64.exe", # URL for StorCLI
         $percoutput = "C:\ProgramData\EasyRaidCheck\Dell\perccli64.exe",
         $percCLILocation = "C:\ProgramData\EasyRaidCheck\Dell\perccli64.exe",
         $percfolder = "C:\ProgramData\EasyRaidCheck\Dell"

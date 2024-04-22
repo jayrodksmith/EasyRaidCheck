@@ -9,7 +9,7 @@ function Get-RaidControllerPERC{
         [string]$controllerName = "Unknown"
     )
     
-    Get-RaidControllerLSIPreReq
+    Get-RaidControllerPERCPreReq
     try {
         $ExecuteStoreCLIvirtualdrive = & $percCLILocation $percCliCommandvirtualdrive | out-string
         $ArrayStorCLIvirtualdrive = ConvertFrom-Json $ExecuteStoreCLIvirtualdrive
