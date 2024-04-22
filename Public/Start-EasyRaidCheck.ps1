@@ -17,6 +17,10 @@ function Start-EasyRaidCheck{
         [string]$hpurl                      = "https://downloads.hpe.com/pub/softlib2/software1/sc-windows/p955544928/v183348/cp044527.exe",
         [string]$hpoutput                   = "C:\temp\cp044527.exe", 
         [string]$hpCLILocation              = 'C:\Program Files\Smart Storage Administrator\ssacli\bin\ssacli.exe', # Dont change this, HP tools is a installed program
+        # PERC Details
+        [string]$percurl                    = "https://raw.githubusercontent.com/jayrodksmith/EasyRaidCheck/main/public/PERC/perccli64.exe",
+        [string]$percoutput                 = 'C:\ProgramData\EasyRaidCheck\Dell\perccli64.exe', 
+        [string]$percCLILocation            = 'C:\ProgramData\EasyRaidCheck\Dell\perccli64.exe',      
         [boolean]$Smartinfo                 = $true # This will download CrystalDiskInfo
 
     )
@@ -32,7 +36,10 @@ function Start-EasyRaidCheck{
         $raidarraydetails, $AllDrives, $FailedDrives, $FailedVirtualDrives, $MissingDrives  = Get-RaidControllerLSI -ControllerName ($($supportedcontrollers.'Controller Name') | Select-object -first 1)
     } elseif ($supportedcontrollers.'Controller Type' -match "HP"){
         # HP
-        $raidarraydetails, $AllDrives, $faileddrives                                        = Get-RaidControllerhp -ControllerName ($($supportedcontrollers.'Controller Name') | Select-object -first 1)
+        $raidarraydetails, $AllDrives, $faileddrives                                        = Get-RaidControllerHP -ControllerName ($($supportedcontrollers.'Controller Name') | Select-object -first 1)
+    } elseif ($supportedcontrollers.'Controller Type' -match "PERC"){
+        # HP
+        $raidarraydetails, $AllDrives, $faileddrives                                        = Get-RaidControllerPERC -ControllerName ($($supportedcontrollers.'Controller Name') | Select-object -first 1)
     } else {
         Write-Output "No Supported Controllers"
         return $controllers

@@ -11,9 +11,9 @@ function Get-RaidControllerLSI{
     
     Get-RaidControllerLSIPreReq
     try {
-        $ExecuteStoreCLIvirtualdrive = & 'C:\temp\Intel_StorCLI_007.1907.0000.0000\Unified_storcli_all_os\Windows\storcli64.exe' $StorCliCommandvirtualdrive | out-string
+        $ExecuteStoreCLIvirtualdrive = & $StorCLILocation $StorCliCommandvirtualdrive | out-string
         $ArrayStorCLIvirtualdrive = ConvertFrom-Json $ExecuteStoreCLIvirtualdrive
-        $ExecuteStoreCLIvirtualdrivegroup = & 'C:\temp\Intel_StorCLI_007.1907.0000.0000\Unified_storcli_all_os\Windows\storcli64.exe' $StorCliCommandvirtualdrivegroup | out-string
+        $ExecuteStoreCLIvirtualdrivegroup = & $StorCLILocation $StorCliCommandvirtualdrivegroup | out-string
         $ArrayStorCLIvirtualdrivegroup = ConvertFrom-Json $ExecuteStoreCLIvirtualdrivegroup
         } catch {
             $ScriptError = "StorCli Command has Failed: $($_.Exception.Message)"
@@ -62,9 +62,9 @@ function Get-RaidControllerLSI{
         })    
     }
     try {
-        $ExecuteStoreCLIphysical = C:\temp\Intel_StorCLI_007.1907.0000.0000\Unified_storcli_all_os\Windows\storcli64.exe $StorCliCommandphysical | out-string
+        $ExecuteStoreCLIphysical = & $StorCLILocation $StorCliCommandphysical | out-string
         $ArrayStorCLIphysical = ConvertFrom-Json $ExecuteStoreCLIphysical
-        $ExecuteStoreCLIphysicalall = C:\temp\Intel_StorCLI_007.1907.0000.0000\Unified_storcli_all_os\Windows\storcli64.exe $StorCliCommandphysicalall | out-string
+        $ExecuteStoreCLIphysicalall = & $StorCLILocation $StorCliCommandphysicalall | out-string
         # Convert the multiline string to an array of strings by splitting on new lines
         $driveEntries = $ExecuteStoreCLIphysicalall -split [System.Environment]::NewLine
 

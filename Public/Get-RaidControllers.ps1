@@ -7,7 +7,8 @@ function Get-RaidControllers{
     $found = $false
     
     # Define controller name patterns for different vendors
-    $lsiPatterns = "*lsi*", "*megaraid*", "*Intel(R) Integrated RAID Module*", "*Intel(R) RAID Controller*", "*megasas*", "*Avago*", "*ThinkSystem RAID*", "*PERC*"
+    $lsiPatterns = "*lsi*", "*megaraid*", "*Intel(R) Integrated RAID Module*", "*Intel(R) RAID Controller*", "*megasas*", "*Avago*", "*ThinkSystem RAID*"
+    $percPattern = "*PERC*"
     $hpPattern = "*Smart Array*"
     $results = @() # Initialize an empty array to store results
 
@@ -35,5 +36,17 @@ function Get-RaidControllers{
             }
         }
     }
+    # Find PERC
+    foreach ($controller in $controllers) {
+        foreach ($pattern in $percPattern) {
+            if ($controller.Name -like $pattern) {
+                $results += [PSCustomObject]@{
+                    "Controller Name" = $controller.Name
+                    "Controller Type" = "PERC"
+                }
+                $found = $true
+            }
+        }
+    }    
     return $results, $controllers
 }
