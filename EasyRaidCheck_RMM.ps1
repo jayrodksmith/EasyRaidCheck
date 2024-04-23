@@ -415,7 +415,7 @@ function Get-RaidControllerHPPreReq {
 
 function Get-SMARTInfo {
     param(
-        $CDIPath = "C:\temp\ninjarmm\crystaldiskinfo\"
+        $CDIPath = "C:\ProgramData\EasyRaidCheck\Crystaldiskinfo"
     )
     
     $CDIExecutable = Join-Path -Path $CDIPath -ChildPath 'DiskInfo64.exe'
@@ -480,10 +480,15 @@ function Get-SMARTPreReq {
     [CmdletBinding()]
     param (
         $crystalurl = "https://ixpeering.dl.sourceforge.net/project/crystaldiskinfo/9.2.3/CrystalDiskInfo9_2_3.zip",
-        $crystaloutput = "C:\temp\CrystalDiskInfo.zip",
-        $crystalLocation = "C:\temp\ninjarmm\crystaldiskinfo\DiskInfo64.exe",
-        $crystalextract = "C:\temp\ninjarmm\crystaldiskinfo"
+        $crystaloutput = "$($env:windir)\temp\CrystalDiskInfo.zip",
+        $crystalLocation = "C:\ProgramData\EasyRaidCheck\Crystaldiskinfo\DiskInfo64.exe",
+        $crystalextract = "C:\ProgramData\EasyRaidCheck\Crystaldiskinfo"
     )
+    # Check if the folder exists
+    if (-not (Test-Path -Path $crystalextract)) {
+        # If it doesn't exist, create it
+        $newfolder = New-Item -Path $crystalextract -ItemType Directory -erroraction SilentlyContinue | Out-null
+    } 
     if (-not(Test-Path -Path $crystalLocation -PathType Leaf)) {
         [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12
         try {
