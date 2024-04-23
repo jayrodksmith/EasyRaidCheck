@@ -66,8 +66,8 @@ function Start-EasyRaidCheck{
         [int]$ninjaexitcodefailure          = '999',                        # Set this in your condition script result code
         # LSI Details
         [string]$lsiurl                     = "https://downloadmirror.intel.com/743783/Intel_StorCLI_007.1907.0000.0000.zip",
-        [string]$lsioutput                  = "C:\temp\storcli.zip",
-        [string]$lsiCLILocation             = 'C:\temp\Intel_StorCLI_007.1907.0000.0000\Unified_storcli_all_os\Windows\storcli64.exe',
+        [string]$lsioutput                  = "$($env:windir)\temp\storcli.zip",
+        [string]$lsiCLILocation             = 'C:\ProgramData\EasyRaidCheck\LSI\Intel_StorCLI_007.1907.0000.0000\Unified_storcli_all_os\Windows\storcli64.exe',
         # HP Details
         [string]$hpurl                      = "https://downloads.hpe.com/pub/softlib2/software1/sc-windows/p955544928/v183348/cp044527.exe",
         [string]$hpoutput                   = "C:\temp\cp044527.exe", 
@@ -501,7 +501,7 @@ function Get-SMARTPreReq {
 function Get-RaidControllerLSI{
     [CmdletBinding()]
     param (
-        [string]$StorCLILocation = 'C:\temp\Intel_StorCLI_007.1907.0000.0000\Unified_storcli_all_os\Windows\storcli64.exe',
+        [string]$StorCLILocation = 'C:\ProgramData\EasyRaidCheck\LSI\Intel_StorCLI_007.1907.0000.0000\Unified_storcli_all_os\Windows\storcli64.exe',
         [string]$StorCliCommandvirtualdrive = "/c0 /vall show j",
         [string]$StorCliCommandvirtualdrivegroup = "/c0 /dall show j",
         [string]$StorCliCommandphysical = "/c0 /eall /sall show j",
