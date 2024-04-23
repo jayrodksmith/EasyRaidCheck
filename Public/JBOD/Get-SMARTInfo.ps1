@@ -1,6 +1,6 @@
 function Get-SMARTInfo {
     param(
-        $CDIPath = "C:\temp\ninjarmm\crystaldiskinfo\"
+        $CDIPath = "C:\ProgramData\EasyRaidCheck\Crystaldiskinfo"
     )
     
     $CDIExecutable = Join-Path -Path $CDIPath -ChildPath 'DiskInfo64.exe'
