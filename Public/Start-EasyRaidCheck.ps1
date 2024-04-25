@@ -10,18 +10,15 @@ function Start-EasyRaidCheck{
         # Ninja Exit Code
         [int]$ninjaexitcodefailure          = '999',                        # Set this in your condition script result code
         # LSI Details
-        [string]$lsiurl                     = "https://downloadmirror.intel.com/743783/Intel_StorCLI_007.1907.0000.0000.zip",
-        [string]$lsioutput                  = "$($env:windir)\temp\storcli.zip",
-        [string]$lsiCLILocation             = 'C:\ProgramData\EasyRaidCheck\LSI\Intel_StorCLI_007.1907.0000.0000\Unified_storcli_all_os\Windows\storcli64.exe',
+        [string]$storecli64                 = 'C:\ProgramData\EasyRaidCheck\LSI\storcli64.exe',     # Will download from intel if missing
         # HP Details
-        [string]$hpurl                      = "https://downloads.hpe.com/pub/softlib2/software1/sc-windows/p955544928/v183348/cp044527.exe",
-        [string]$hpoutput                   = "C:\temp\cp044527.exe", 
-        [string]$hpCLILocation              = 'C:\Program Files\Smart Storage Administrator\ssacli\bin\ssacli.exe', # Dont change this, HP tools is a installed program
+        [string]$ssacli                     = 'C:\ProgramData\EasyRaidCheck\HP\ssacli.exe',         # Will download from HP if missing
+        [string]$ssaducli                   = 'C:\ProgramData\EasyRaidCheck\HP\ssaducli.exe',       # Will download from HP if missing
         # PERC Details
-        [string]$percurl                    = "https://raw.githubusercontent.com/jayrodksmith/EasyRaidCheck/main/public/PERC/perccli64.exe",
-        [string]$percoutput                 = 'C:\ProgramData\EasyRaidCheck\Dell\perccli64.exe', 
-        [string]$percCLILocation            = 'C:\ProgramData\EasyRaidCheck\Dell\perccli64.exe',      
-        [boolean]$Smartinfo                 = $true # This will download CrystalDiskInfo
+        [string]$perccli64                  = 'C:\ProgramData\EasyRaidCheck\Dell\perccli64.exe',   # Will download from my github if missing
+        # CrystalDiskInfo Details
+        [boolean]$Smartinfo                 = $true ,                                               # This will download CrystalDiskInfo if missing
+        $DiskInfo64                         = "C:\ProgramData\EasyRaidCheck\Crystaldiskinfo\DiskInfo64.exe"
 
     )
     # Determine if the system is virtual
@@ -33,13 +30,14 @@ function Start-EasyRaidCheck{
 
     if ($supportedcontrollers.'Controller Type' -match "LSI"){
         # LSI
-        $raidarraydetails, $AllDrives, $FailedDrives, $FailedVirtualDrives, $MissingDrives  = Get-RaidControllerLSI -ControllerName ($($supportedcontrollers.'Controller Name') | Select-object -first 1)
+        $raidarraydetails, $AllDrives, $FailedDrives, $FailedVirtualDrives, $MissingDrives  = Get-RaidControllerLSI -percCLILocation $perccli64 -ControllerName ($($supportedcontrollers.'Controller Name') | Select-object -first 1)
+
     } elseif ($supportedcontrollers.'Controller Type' -match "HP"){
         # HP
-        $raidarraydetails, $AllDrives, $faileddrives                                        = Get-RaidControllerHP -ControllerName ($($supportedcontrollers.'Controller Name') | Select-object -first 1)
+        $raidarraydetails, $AllDrives, $faileddrives                                        = Get-RaidControllerHP -hpCLIlocation $ssacli -hpADUlocation $ssaducli -ControllerName ($($supportedcontrollers.'Controller Name') | Select-object -first 1)
     } elseif ($supportedcontrollers.'Controller Type' -match "PERC"){
         # HP
-        $raidarraydetails, $AllDrives, $faileddrives                                        = Get-RaidControllerPERC -ControllerName ($($supportedcontrollers.'Controller Name') | Select-object -first 1)
+        $raidarraydetails, $AllDrives, $faileddrives                                        = Get-RaidControllerPERC -percCLILocation $perccli64 -ControllerName ($($supportedcontrollers.'Controller Name') | Select-object -first 1)
     } else {
         Write-Output "No Supported Controllers"
         $supported = $false
@@ -51,7 +49,7 @@ function Start-EasyRaidCheck{
     }
     # Retrieve Smart Details using CrystalDiskInfo if set to true
     if($Smartinfo -eq $true){
-        $smartalldrives, $smartFailedDrives                                                 = Get-SMARTInfo
+        $smartalldrives, $smartFailedDrives                                                 = Get-SMARTInfo -CDIPath $DiskInfo64 
         # Check existing results and merge results if found.
         if ($supported -ne $false){
             foreach ($drive in $alldrives) {
@@ -81,6 +79,23 @@ function Start-EasyRaidCheck{
         Get-FieldsNinjaRMM -fieldWYSIWYGdrives $ninjafieldWYSIWYGdrives -fieldraidarraystatus $ninjafieldraidarraystatus -fieldraidarraydetails $ninjafieldraidarraydetails
         Write-ResultNinjaRMM -fieldWYSIWYGdrives $ninjafieldWYSIWYGdrives -fieldraidarraystatus $ninjafieldraidarraystatus -fieldraidarraydetails $ninjafieldraidarraydetails -resultraidarraydetails $raidarraydetails -resultAllDrives $AllDrives -resultfaileddrives $faileddrives
     }
+    # Write Values to Json
+    if($raidarraydetails){
+        $raidarraydetails       | ConvertTo-Json | Out-File -FilePath "C:\ProgramData\EasyRaidCheck\Array_Details.json" -Force
+    }       
+    if($alldrives){
+        $alldrives              | ConvertTo-Json | Out-File -FilePath "C:\ProgramData\EasyRaidCheck\Drives_All.json" -Force
+    }             
+    if($FailedDrives){
+        $FailedDrives           | ConvertTo-Json | Out-File -FilePath "C:\ProgramData\EasyRaidCheck\Drives_Failed.json" -Force
+    } 
+    if($FailedVirtualDrives){
+        $FailedVirtualDrives    | ConvertTo-Json | Out-File -FilePath "C:\ProgramData\EasyRaidCheck\Drives_Failed_Virtual.json" -Force
+    }
+    if($MissingDrives){
+        $MissingDrives          | ConvertTo-Json | Out-File -FilePath "C:\ProgramData\EasyRaidCheck\Drives_Missing.json" -Force
+    }
+
     # Output results to screen
     $raidarraydetails | format-table
     if($supported -ne $false) {

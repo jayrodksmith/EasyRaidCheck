@@ -3,7 +3,7 @@ function Get-SMARTPreReq {
     param (
         $crystalurl = "https://ixpeering.dl.sourceforge.net/project/crystaldiskinfo/9.2.3/CrystalDiskInfo9_2_3.zip",
         $crystaloutput = "$($env:windir)\temp\CrystalDiskInfo.zip",
-        $crystalLocation = "C:\ProgramData\EasyRaidCheck\Crystaldiskinfo\DiskInfo64.exe",
+        $crystalLocation = "",
         $crystalextract = "C:\ProgramData\EasyRaidCheck\Crystaldiskinfo"
     )
     # Check if the folder exists

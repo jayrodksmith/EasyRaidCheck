@@ -1,17 +1,17 @@
 function Get-RaidControllerHP{
     [CmdletBinding()]
     param (
-        [string]$hpCLILocation = 'C:\Program Files\Smart Storage Administrator\ssacli\bin\ssacli.exe',
-        [string]$hpCLILocation2 = 'C:\Program Files\Smart Storage Administrator\ssaducli\bin\ssaducli.exe',
-        [string]$hpclireport = "C:\temp\HPReport.txt",
+        [string]$hpCLIlocation = "",
+        [string]$hpADUlocation = "",
+        [string]$hpclireport = "C:\ProgramData\EasyRaidCheck\HP\HPReport.txt",
         [string]$controllerName = "Unknown"
 
     )
     
-    Get-RaidControllerHPPreReq
+    Get-RaidControllerHPPreReq -hpLocationcli $hpCLIlocation -hpLocationadu $hpADUlocation
 
-    $hpraidstatus = & $hpCLILocation ctrl all show status | Out-String
-    $hpraidstatus2 = & $hpCLILocation2 -adu -txt -f $hpclireport
+    $hpraidstatus = & $hpCLIlocation ctrl all show status | Out-String
+    $hpraidstatus2 = & $hpADUlocation -adu -txt -f $hpclireport
 
     ######## Get HP Smart details Start
         $objects = @()
@@ -117,9 +117,9 @@ function Get-RaidControllerHP{
     foreach ($match in $slotmatches) {
         $slotNumber = $match.Groups[1].Value
             #Write-Output "slot=$slotNumber"
-            $hpraidstatusslot_array += & $hpCLILocation ctrl slot=$slotNumber array all show status | Out-String
-            $hpraidstatusslot_pd += & $hpCLILocation ctrl slot=$slotNumber pd all show | Out-String
-            $hpraidstatusslot_ld += & $hpCLILocation ctrl slot=$slotNumber ld all show | Out-String
+            $hpraidstatusslot_array += & $hpCLIlocation ctrl slot=$slotNumber array all show status | Out-String
+            $hpraidstatusslot_pd += & $hpCLIlocation ctrl slot=$slotNumber pd all show | Out-String
+            $hpraidstatusslot_ld += & $hpCLIlocation ctrl slot=$slotNumber ld all show | Out-String
     }
     $PhysicalStatus = ""
 
@@ -129,7 +129,7 @@ function Get-RaidControllerHP{
     $PhysicalStatus_drivenumbers = ($PhysicalStatus -split "`n" | Select-String -Pattern "physicaldrive" | ForEach-Object { [regex]::Match($_, '(\d+[A-Z]:\d+:\d+)').Value })
     foreach ($PhysicalStatus_drivenumber in $PhysicalStatus_drivenumbers) {
         Write-Verbose "Creating object for $PhysicalStatus_drivenumber"
-        $hpraidstatusslot_pd_details = & $hpCLILocation ctrl slot=$slotNumber pd "$PhysicalStatus_drivenumber" show detail | Out-String
+        $hpraidstatusslot_pd_details = & $hpCLIlocation ctrl slot=$slotNumber pd "$PhysicalStatus_drivenumber" show detail | Out-String
         $ArrayLine = ($hpraidstatusslot_pd_details -split "`n" | Select-String -Pattern "Array")
         $Array = if ($ArrayLine) { $ArrayLine.Line.TrimStart().Split(" ", 2)[-1].Trim() } else { $null }
 

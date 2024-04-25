@@ -1,6 +1,19 @@
 # Changelog for EasyRaidCheck
 ## [Unreleased]
 
+## [1.4.0] - 25-04-2024
+
+### Added
+
+- Added storing results to json
+- Added more supported raid controllers based on LSI
+
+### Changed
+
+- Updated HP cli and ADU to latest version ( supports more controllers )
+- Folder structure now based on programdata folder
+- Main function controls location of CLI's
+
 ## [1.3.0] - 22-04-2024
 
 ### Added

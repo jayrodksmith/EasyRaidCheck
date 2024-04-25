@@ -3,7 +3,8 @@ function Get-RaidControllerLSIPreReq {
     param (
         $lsiurl = "https://downloadmirror.intel.com/743783/Intel_StorCLI_007.1907.0000.0000.zip", # URL for StorCLI
         $lsioutput = "$($env:windir)\temp\storcli.zip",
-        $lsiCLILocation = 'C:\ProgramData\EasyRaidCheck\LSI\Intel_StorCLI_007.1907.0000.0000\Unified_storcli_all_os\Windows\storcli64.exe',
+        $lsiCLILocation = "",
+        $lsiCLILocationtemp = 'C:\ProgramData\EasyRaidCheck\LSI\Intel_StorCLI_007.1907.0000.0000\Unified_storcli_all_os\Windows\storcli64.exe',
         $lsifolder = "C:\ProgramData\EasyRaidCheck\LSI"
     )
     # Check if the folder exists
@@ -17,6 +18,8 @@ function Get-RaidControllerLSIPreReq {
             Write-Verbose "LSI Tools downloading and extracting"
             Invoke-WebRequest -Uri $lsiurl -OutFile $lsioutput
             Expand-File -File $lsioutput -Destination $lsifolder
+            Move-Item -Path $lsiCLILocationtemp -Destination $lsifolder -Force
+            Remove-Item -Path "C:\ProgramData\EasyRaidCheck\LSI\Intel_StorCLI_007.1907.0000.0000" -Recurse
         }catch{
             Write-Error "An error occurred: $_"
         }

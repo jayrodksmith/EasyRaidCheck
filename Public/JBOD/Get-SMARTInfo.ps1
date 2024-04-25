@@ -1,9 +1,9 @@
 function Get-SMARTInfo {
     param(
-        $CDIPath = "C:\ProgramData\EasyRaidCheck\Crystaldiskinfo"
+        $CDIPath = ""
     )
     
-    $CDIExecutable = Join-Path -Path $CDIPath -ChildPath 'DiskInfo64.exe'
+    $CDIExecutable = $CDIPath
     Get-SMARTPreReq -crystalLocation $CDIExecutable
 
     try {

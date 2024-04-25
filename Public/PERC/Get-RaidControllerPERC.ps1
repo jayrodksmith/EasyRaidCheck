@@ -1,7 +1,7 @@
 function Get-RaidControllerPERC{
     [CmdletBinding()]
     param (
-        [string]$percCLILocation = 'C:\ProgramData\EasyRaidCheck\Dell\perccli64.exe',
+        [string]$percCLILocation = "",
         [string]$percCliCommandvirtualdrive = "/c0 /vall show j",
         [string]$percCliCommandvirtualdrivegroup = "/c0 /dall show j",
         [string]$percCliCommandphysical = "/c0 /eall /sall show j",
@@ -9,7 +9,7 @@ function Get-RaidControllerPERC{
         [string]$controllerName = "Unknown"
     )
     
-    Get-RaidControllerPERCPreReq
+    Get-RaidControllerPERCPreReq -percLocation $percCLILocation
     try {
         $ExecuteStoreCLIvirtualdrive = & $percCLILocation $percCliCommandvirtualdrive | out-string
         $ArrayStorCLIvirtualdrive = ConvertFrom-Json $ExecuteStoreCLIvirtualdrive
