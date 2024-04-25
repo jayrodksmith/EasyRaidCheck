@@ -9,9 +9,9 @@ function Get-RaidControllers{
     $found = $false
     
     # Define controller name patterns for different vendors
-    $lsiPatterns = "*lsi*", "*megaraid*", "*Intel(R) Integrated RAID Module*", "*Intel(R) RAID Controller*", "*megasas*", "*Avago*", "*ThinkSystem RAID*"
+    $lsiPatterns = "*lsi*", "*megaraid*", "*Intel(R) Integrated RAID Module*", "*Intel(R) RAID Controller*", "*Intel Embedded Server RAID Technology II*","*ServeRAID*", "*megasas*", "*Avago*","*Lenovo ThinkServer RAID*", "*ThinkSystem RAID*", "*Asustek pike 2208*", "*ASUSTEK PIKE II*","*Intel(R) Integrated RAID RS3*", "*SAS3008*","*SAS3108*","*SAS2208*","*Gigabyte MR-3108*","*MSI S101B IMR*","*SAS3004*","*ASRR_M3108*"
     $percPattern = "*PERC*"
-    $hpPattern = "*Smart Array*"
+    $hpPattern = "*Smart Array*", "*Adaptec SmartHBA-SA*", "*Microchip Adaptec HBA 1000*"
     $results = @() # Initialize an empty array to store results
 
     # Find LSI
@@ -65,18 +65,15 @@ function Start-EasyRaidCheck{
         # Ninja Exit Code
         [int]$ninjaexitcodefailure          = '999',                        # Set this in your condition script result code
         # LSI Details
-        [string]$lsiurl                     = "https://downloadmirror.intel.com/743783/Intel_StorCLI_007.1907.0000.0000.zip",
-        [string]$lsioutput                  = "$($env:windir)\temp\storcli.zip",
-        [string]$lsiCLILocation             = 'C:\ProgramData\EasyRaidCheck\LSI\Intel_StorCLI_007.1907.0000.0000\Unified_storcli_all_os\Windows\storcli64.exe',
+        [string]$storecli64                 = 'C:\ProgramData\EasyRaidCheck\LSI\storcli64.exe',     # Will download from intel if missing
         # HP Details
-        [string]$hpurl                      = "https://downloads.hpe.com/pub/softlib2/software1/sc-windows/p955544928/v183348/cp044527.exe",
-        [string]$hpoutput                   = "C:\temp\cp044527.exe", 
-        [string]$hpCLILocation              = 'C:\Program Files\Smart Storage Administrator\ssacli\bin\ssacli.exe', # Dont change this, HP tools is a installed program
+        [string]$ssacli                     = 'C:\ProgramData\EasyRaidCheck\HP\ssacli.exe',         # Will download from HP if missing
+        [string]$ssaducli                   = 'C:\ProgramData\EasyRaidCheck\HP\ssaducli.exe',       # Will download from HP if missing
         # PERC Details
-        [string]$percurl                    = "https://raw.githubusercontent.com/jayrodksmith/EasyRaidCheck/main/public/PERC/perccli64.exe",
-        [string]$percoutput                 = 'C:\ProgramData\EasyRaidCheck\Dell\perccli64.exe', 
-        [string]$percCLILocation            = 'C:\ProgramData\EasyRaidCheck\Dell\perccli64.exe',      
-        [boolean]$Smartinfo                 = $true # This will download CrystalDiskInfo
+        [string]$perccli64                  = 'C:\ProgramData\EasyRaidCheck\Dell\perccli64.exe',   # Will download from my github if missing
+        # CrystalDiskInfo Details
+        [boolean]$Smartinfo                 = $true ,                                               # This will download CrystalDiskInfo if missing
+        $DiskInfo64                         = "C:\ProgramData\EasyRaidCheck\Crystaldiskinfo\DiskInfo64.exe"
 
     )
     # Determine if the system is virtual
@@ -88,13 +85,14 @@ function Start-EasyRaidCheck{
 
     if ($supportedcontrollers.'Controller Type' -match "LSI"){
         # LSI
-        $raidarraydetails, $AllDrives, $FailedDrives, $FailedVirtualDrives, $MissingDrives  = Get-RaidControllerLSI -ControllerName ($($supportedcontrollers.'Controller Name') | Select-object -first 1)
+        $raidarraydetails, $AllDrives, $FailedDrives, $FailedVirtualDrives, $MissingDrives  = Get-RaidControllerLSI -percCLILocation $perccli64 -ControllerName ($($supportedcontrollers.'Controller Name') | Select-object -first 1)
+
     } elseif ($supportedcontrollers.'Controller Type' -match "HP"){
         # HP
-        $raidarraydetails, $AllDrives, $faileddrives                                        = Get-RaidControllerHP -ControllerName ($($supportedcontrollers.'Controller Name') | Select-object -first 1)
+        $raidarraydetails, $AllDrives, $faileddrives                                        = Get-RaidControllerHP -hpCLIlocation $ssacli -hpADUlocation $ssaducli -ControllerName ($($supportedcontrollers.'Controller Name') | Select-object -first 1)
     } elseif ($supportedcontrollers.'Controller Type' -match "PERC"){
         # HP
-        $raidarraydetails, $AllDrives, $faileddrives                                        = Get-RaidControllerPERC -ControllerName ($($supportedcontrollers.'Controller Name') | Select-object -first 1)
+        $raidarraydetails, $AllDrives, $faileddrives                                        = Get-RaidControllerPERC -percCLILocation $perccli64 -ControllerName ($($supportedcontrollers.'Controller Name') | Select-object -first 1)
     } else {
         Write-Output "No Supported Controllers"
         $supported = $false
@@ -106,7 +104,7 @@ function Start-EasyRaidCheck{
     }
     # Retrieve Smart Details using CrystalDiskInfo if set to true
     if($Smartinfo -eq $true){
-        $smartalldrives, $smartFailedDrives                                                 = Get-SMARTInfo
+        $smartalldrives, $smartFailedDrives                                                 = Get-SMARTInfo -CDIPath $DiskInfo64 
         # Check existing results and merge results if found.
         if ($supported -ne $false){
             foreach ($drive in $alldrives) {
@@ -136,6 +134,23 @@ function Start-EasyRaidCheck{
         Get-FieldsNinjaRMM -fieldWYSIWYGdrives $ninjafieldWYSIWYGdrives -fieldraidarraystatus $ninjafieldraidarraystatus -fieldraidarraydetails $ninjafieldraidarraydetails
         Write-ResultNinjaRMM -fieldWYSIWYGdrives $ninjafieldWYSIWYGdrives -fieldraidarraystatus $ninjafieldraidarraystatus -fieldraidarraydetails $ninjafieldraidarraydetails -resultraidarraydetails $raidarraydetails -resultAllDrives $AllDrives -resultfaileddrives $faileddrives
     }
+    # Write Values to Json
+    if($raidarraydetails){
+        $raidarraydetails       | ConvertTo-Json | Out-File -FilePath "C:\ProgramData\EasyRaidCheck\Array_Details.json" -Force
+    }       
+    if($alldrives){
+        $alldrives              | ConvertTo-Json | Out-File -FilePath "C:\ProgramData\EasyRaidCheck\Drives_All.json" -Force
+    }             
+    if($FailedDrives){
+        $FailedDrives           | ConvertTo-Json | Out-File -FilePath "C:\ProgramData\EasyRaidCheck\Drives_Failed.json" -Force
+    } 
+    if($FailedVirtualDrives){
+        $FailedVirtualDrives    | ConvertTo-Json | Out-File -FilePath "C:\ProgramData\EasyRaidCheck\Drives_Failed_Virtual.json" -Force
+    }
+    if($MissingDrives){
+        $MissingDrives          | ConvertTo-Json | Out-File -FilePath "C:\ProgramData\EasyRaidCheck\Drives_Missing.json" -Force
+    }
+
     # Output results to screen
     $raidarraydetails | format-table
     if($supported -ne $false) {
@@ -160,17 +175,17 @@ function Start-EasyRaidCheck{
 function Get-RaidControllerHP{
     [CmdletBinding()]
     param (
-        [string]$hpCLILocation = 'C:\Program Files\Smart Storage Administrator\ssacli\bin\ssacli.exe',
-        [string]$hpCLILocation2 = 'C:\Program Files\Smart Storage Administrator\ssaducli\bin\ssaducli.exe',
-        [string]$hpclireport = "C:\temp\HPReport.txt",
+        [string]$hpCLIlocation = "",
+        [string]$hpADUlocation = "",
+        [string]$hpclireport = "C:\ProgramData\EasyRaidCheck\HP\HPReport.txt",
         [string]$controllerName = "Unknown"
 
     )
     
-    Get-RaidControllerHPPreReq
+    Get-RaidControllerHPPreReq -hpLocationcli $hpCLIlocation -hpLocationadu $hpADUlocation
 
-    $hpraidstatus = & $hpCLILocation ctrl all show status | Out-String
-    $hpraidstatus2 = & $hpCLILocation2 -adu -txt -f $hpclireport
+    $hpraidstatus = & $hpCLIlocation ctrl all show status | Out-String
+    $hpraidstatus2 = & $hpADUlocation -adu -txt -f $hpclireport
 
     ######## Get HP Smart details Start
         $objects = @()
@@ -276,9 +291,9 @@ function Get-RaidControllerHP{
     foreach ($match in $slotmatches) {
         $slotNumber = $match.Groups[1].Value
             #Write-Output "slot=$slotNumber"
-            $hpraidstatusslot_array += & $hpCLILocation ctrl slot=$slotNumber array all show status | Out-String
-            $hpraidstatusslot_pd += & $hpCLILocation ctrl slot=$slotNumber pd all show | Out-String
-            $hpraidstatusslot_ld += & $hpCLILocation ctrl slot=$slotNumber ld all show | Out-String
+            $hpraidstatusslot_array += & $hpCLIlocation ctrl slot=$slotNumber array all show status | Out-String
+            $hpraidstatusslot_pd += & $hpCLIlocation ctrl slot=$slotNumber pd all show | Out-String
+            $hpraidstatusslot_ld += & $hpCLIlocation ctrl slot=$slotNumber ld all show | Out-String
     }
     $PhysicalStatus = ""
 
@@ -288,7 +303,7 @@ function Get-RaidControllerHP{
     $PhysicalStatus_drivenumbers = ($PhysicalStatus -split "`n" | Select-String -Pattern "physicaldrive" | ForEach-Object { [regex]::Match($_, '(\d+[A-Z]:\d+:\d+)').Value })
     foreach ($PhysicalStatus_drivenumber in $PhysicalStatus_drivenumbers) {
         Write-Verbose "Creating object for $PhysicalStatus_drivenumber"
-        $hpraidstatusslot_pd_details = & $hpCLILocation ctrl slot=$slotNumber pd "$PhysicalStatus_drivenumber" show detail | Out-String
+        $hpraidstatusslot_pd_details = & $hpCLIlocation ctrl slot=$slotNumber pd "$PhysicalStatus_drivenumber" show detail | Out-String
         $ArrayLine = ($hpraidstatusslot_pd_details -split "`n" | Select-String -Pattern "Array")
         $Array = if ($ArrayLine) { $ArrayLine.Line.TrimStart().Split(" ", 2)[-1].Trim() } else { $null }
 
@@ -373,36 +388,40 @@ function Get-RaidControllerHP{
 function Get-RaidControllerHPPreReq {
     [CmdletBinding()]
     param (
-        $hpurl = "https://downloads.hpe.com/pub/softlib2/software1/sc-windows/p955544928/v183348/cp044527.exe", # URL for HP CLI
-        $hpurl2 = "https://downloads.hpe.com/pub/softlib2/software1/sc-windows/p2024036775/v183350/cp044528.exe",# URL for HP ADU
-        $hpoutput = "C:\temp\cp044527.exe",
-        $hpoutput2 = "C:\temp\cp044528.exe",
+        $hpurl = "https://downloads.hpe.com/pub/softlib2/software1/sc-windows/p632700740/v238698/cp044527.exe", # URL for HP CLI
+        $hpurl2 = "https://downloads.hpe.com/pub/softlib2/software1/sc-windows/p1394061884/v238699/cp044528.exe",# URL for HP ADU
+        $hpoutput = "$($env:windir)\temp\cp044527.exe",
+        $hpoutput2 = "$($env:windir)\temp\cp044528.exe",
         $hpCLILocation = 'C:\Program Files\Smart Storage Administrator\ssacli\bin\ssacli.exe',
         $hpCLILocation2 = 'C:\Program Files\Smart Storage Administrator\ssaducli\bin\ssaducli.exe',
+        $hpLocationcli = "",
+        $hpLocationadu = "",
         $hpfolder = "C:\ProgramData\EasyRaidCheck\HP"
     )
     if (-not (Test-Path -Path $hpfolder)) {
         # If it doesn't exist, create it
         $newfolder = New-Item -Path $hpfolder -ItemType Directory -erroraction SilentlyContinue | Out-null
     } 
-    if (-not(Test-Path -Path $hpCLILocation -PathType Leaf)) {
+    if (-not(Test-Path -Path $hpLocationcli -PathType Leaf)) {
         [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12
         try {
             Write-Verbose "HP CLI downloading and installing"
             Invoke-WebRequest -Uri $hpurl -OutFile $hpoutput
-            Start-Process -FilePath 'C:\temp\cp044527.exe' -ArgumentList "/s"
+            Start-Process -FilePath $hpoutput -ArgumentList "/s"
+            Copy-Item -Path $hpCLILocation -Destination $hpfolder -Force
         }catch{
             Write-Error "An error occurred: $_"
         }
     }else{
         Write-Verbose "HP CLI already installed"
     }
-    if (-not(Test-Path -Path $hpCLILocation2 -PathType Leaf)) {
+    if (-not(Test-Path -Path $hpLocationadu -PathType Leaf)) {
         [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12
         try {
             Write-Verbose "HP ADU downloading and installing"
             Invoke-WebRequest -Uri $hpurl2 -OutFile $hpoutput2
-            Start-Process -FilePath 'C:\temp\cp044528.exe' -ArgumentList "/s"
+            Start-Process -FilePath $hpoutput2 -ArgumentList "/s"
+            Copy-Item -Path $hpCLILocation2 -Destination $hpfolder -Force
         }catch{
             Write-Error "An error occurred: $_"
         }
@@ -411,14 +430,12 @@ function Get-RaidControllerHPPreReq {
     }
 }
 
-## Intial Code Here
-
 function Get-SMARTInfo {
     param(
-        $CDIPath = "C:\ProgramData\EasyRaidCheck\Crystaldiskinfo"
+        $CDIPath = ""
     )
     
-    $CDIExecutable = Join-Path -Path $CDIPath -ChildPath 'DiskInfo64.exe'
+    $CDIExecutable = $CDIPath
     Get-SMARTPreReq -crystalLocation $CDIExecutable
 
     try {
@@ -481,7 +498,7 @@ function Get-SMARTPreReq {
     param (
         $crystalurl = "https://ixpeering.dl.sourceforge.net/project/crystaldiskinfo/9.2.3/CrystalDiskInfo9_2_3.zip",
         $crystaloutput = "$($env:windir)\temp\CrystalDiskInfo.zip",
-        $crystalLocation = "C:\ProgramData\EasyRaidCheck\Crystaldiskinfo\DiskInfo64.exe",
+        $crystalLocation = "",
         $crystalextract = "C:\ProgramData\EasyRaidCheck\Crystaldiskinfo"
     )
     # Check if the folder exists
@@ -506,7 +523,7 @@ function Get-SMARTPreReq {
 function Get-RaidControllerLSI{
     [CmdletBinding()]
     param (
-        [string]$StorCLILocation = 'C:\ProgramData\EasyRaidCheck\LSI\Intel_StorCLI_007.1907.0000.0000\Unified_storcli_all_os\Windows\storcli64.exe',
+        [string]$StorCLILocation = 'C:\ProgramData\EasyRaidCheck\LSI\storcli64.exe',
         [string]$StorCliCommandvirtualdrive = "/c0 /vall show j",
         [string]$StorCliCommandvirtualdrivegroup = "/c0 /dall show j",
         [string]$StorCliCommandphysical = "/c0 /eall /sall show j",
@@ -514,7 +531,7 @@ function Get-RaidControllerLSI{
         [string]$controllerName = "Unknown"
     )
     
-    Get-RaidControllerLSIPreReq
+    Get-RaidControllerLSIPreReq -lsiCLILocation $StorCLILocation
     try {
         $ExecuteStoreCLIvirtualdrive = & $StorCLILocation $StorCliCommandvirtualdrive | out-string
         $ArrayStorCLIvirtualdrive = ConvertFrom-Json $ExecuteStoreCLIvirtualdrive
@@ -665,7 +682,8 @@ function Get-RaidControllerLSIPreReq {
     param (
         $lsiurl = "https://downloadmirror.intel.com/743783/Intel_StorCLI_007.1907.0000.0000.zip", # URL for StorCLI
         $lsioutput = "$($env:windir)\temp\storcli.zip",
-        $lsiCLILocation = 'C:\ProgramData\EasyRaidCheck\LSI\Intel_StorCLI_007.1907.0000.0000\Unified_storcli_all_os\Windows\storcli64.exe',
+        $lsiCLILocation = "",
+        $lsiCLILocationtemp = 'C:\ProgramData\EasyRaidCheck\LSI\Intel_StorCLI_007.1907.0000.0000\Unified_storcli_all_os\Windows\storcli64.exe',
         $lsifolder = "C:\ProgramData\EasyRaidCheck\LSI"
     )
     # Check if the folder exists
@@ -679,6 +697,8 @@ function Get-RaidControllerLSIPreReq {
             Write-Verbose "LSI Tools downloading and extracting"
             Invoke-WebRequest -Uri $lsiurl -OutFile $lsioutput
             Expand-File -File $lsioutput -Destination $lsifolder
+            Move-Item -Path $lsiCLILocationtemp -Destination $lsifolder -Force
+            Remove-Item -Path "C:\ProgramData\EasyRaidCheck\LSI\Intel_StorCLI_007.1907.0000.0000" -Recurse
         }catch{
             Write-Error "An error occurred: $_"
         }
@@ -690,7 +710,7 @@ function Get-RaidControllerLSIPreReq {
 function Get-RaidControllerPERC{
     [CmdletBinding()]
     param (
-        [string]$percCLILocation = 'C:\ProgramData\EasyRaidCheck\Dell\perccli64.exe',
+        [string]$percCLILocation = "",
         [string]$percCliCommandvirtualdrive = "/c0 /vall show j",
         [string]$percCliCommandvirtualdrivegroup = "/c0 /dall show j",
         [string]$percCliCommandphysical = "/c0 /eall /sall show j",
@@ -698,7 +718,7 @@ function Get-RaidControllerPERC{
         [string]$controllerName = "Unknown"
     )
     
-    Get-RaidControllerPERCPreReq
+    Get-RaidControllerPERCPreReq -percLocation $percCLILocation
     try {
         $ExecuteStoreCLIvirtualdrive = & $percCLILocation $percCliCommandvirtualdrive | out-string
         $ArrayStorCLIvirtualdrive = ConvertFrom-Json $ExecuteStoreCLIvirtualdrive
@@ -848,8 +868,7 @@ function Get-RaidControllerPERCPreReq {
     [CmdletBinding()]
     param (
         $percurl = "https://raw.githubusercontent.com/jayrodksmith/EasyRaidCheck/main/Public/PERC/perccli64.exe", # URL for StorCLI
-        $percoutput = "C:\ProgramData\EasyRaidCheck\Dell\perccli64.exe",
-        $percCLILocation = "C:\ProgramData\EasyRaidCheck\Dell\perccli64.exe",
+        $percLocation = "",
         $percfolder = "C:\ProgramData\EasyRaidCheck\Dell"
     )
     # Check if the folder exists
@@ -857,11 +876,11 @@ function Get-RaidControllerPERCPreReq {
         # If it doesn't exist, create it
         $newfolder = New-Item -Path $percfolder -ItemType Directory -erroraction SilentlyContinue | Out-null
     } 
-    if (-not(Test-Path -Path $percCLILocation -PathType Leaf)) {
+    if (-not(Test-Path -Path $percLocation -PathType Leaf)) {
         [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12
         try {
             Write-Verbose "PERC Tools downloading and extracting"
-            Invoke-WebRequest -Uri $percurl -OutFile $percoutput
+            Invoke-WebRequest -Uri $percurl -OutFile $percLocation
         }catch{
             Write-Error "An error occurred: $_"
         }
@@ -907,12 +926,6 @@ function Expand-File{
             $shell.Namespace($destination).copyhere($item, 0x14)
         }
     }
-}
-
-function Get-DownloadUrls {
-    [CmdletBinding()]
-    param (
-    )
 }
 
 function ConvertTo-ObjectToHtmlTable {
@@ -1043,7 +1056,5 @@ function Write-ResultNinjaRMM {
         }
     }
 }
-
-## Intial Code Here
 
 Start-EasyRaidCheck
