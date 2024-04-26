@@ -27,7 +27,7 @@ function Expand-File{
         $commandexist = $False
         }
     if($commandexist -eq $True) {
-        Expand-Archive -Path $file -DestinationPath $destination
+        Expand-Archive -Path $file -DestinationPath $destination -Force
     } else {
         $shell = new-object -com shell.application
         $zip = $shell.NameSpace($file)

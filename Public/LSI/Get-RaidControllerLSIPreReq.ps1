@@ -17,7 +17,7 @@ function Get-RaidControllerLSIPreReq {
         try {
             Write-Verbose "LSI Tools downloading and extracting"
             Invoke-WebRequest -Uri $lsiurl -OutFile $lsioutput
-            Expand-File -File $lsioutput -Destination $lsifolder -force
+            Expand-File -File $lsioutput -Destination $lsifolder
             Move-Item -Path $lsiCLILocationtemp -Destination $lsifolder -Force
             Remove-Item -Path "C:\ProgramData\EasyRaidCheck\LSI\Intel_StorCLI_007.1907.0000.0000" -Recurse
         }catch{
