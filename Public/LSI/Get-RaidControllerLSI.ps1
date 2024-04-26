@@ -193,5 +193,5 @@ function Get-RaidControllerLSI{
         PhysicalStatus          = $RAIDphysicalstatus
     })
     
-    return $raidarraydetails, $AllDrives, $FailedDrives, $FailedVirtualDrives, $MissingDrives, $virtualdrives
+    return $raidarraydetails, $AllDrives, $virtualdrives, $FailedDrives, $FailedVirtualDrives, $MissingDrives
 }
