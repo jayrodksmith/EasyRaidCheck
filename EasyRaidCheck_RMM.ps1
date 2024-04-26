@@ -85,7 +85,7 @@ function Start-EasyRaidCheck{
 
     if ($supportedcontrollers.'Controller Type' -match "LSI"){
         # LSI
-        $raidarraydetails, $AllDrives, $FailedDrives, $FailedVirtualDrives, $MissingDrives  = Get-RaidControllerLSI -percCLILocation $perccli64 -ControllerName ($($supportedcontrollers.'Controller Name') | Select-object -first 1)
+        $raidarraydetails, $AllDrives, $FailedDrives, $FailedVirtualDrives, $MissingDrives  = Get-RaidControllerLSI -StorCLILocation $storecli64 -ControllerName ($($supportedcontrollers.'Controller Name') | Select-object -first 1)
 
     } elseif ($supportedcontrollers.'Controller Type' -match "HP"){
         # HP
@@ -523,7 +523,7 @@ function Get-SMARTPreReq {
 function Get-RaidControllerLSI{
     [CmdletBinding()]
     param (
-        [string]$StorCLILocation = 'C:\ProgramData\EasyRaidCheck\LSI\storcli64.exe',
+        [string]$StorCLILocation = "",
         [string]$StorCliCommandvirtualdrive = "/c0 /vall show j",
         [string]$StorCliCommandvirtualdrivegroup = "/c0 /dall show j",
         [string]$StorCliCommandphysical = "/c0 /eall /sall show j",
