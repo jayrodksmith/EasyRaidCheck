@@ -30,7 +30,7 @@ function Start-EasyRaidCheck{
 
     if ($supportedcontrollers.'Controller Type' -match "LSI"){
         # LSI
-        $raidarraydetails, $AllDrives, $FailedDrives, $FailedVirtualDrives, $MissingDrives  = Get-RaidControllerLSI -StorCLILocation $storecli64 -ControllerName ($($supportedcontrollers.'Controller Name') | Select-object -first 1)
+        $raidarraydetails, $AllDrives, $FailedDrives, $FailedVirtualDrives, $MissingDrives, $virtualdrives  = Get-RaidControllerLSI -StorCLILocation $storecli64 -ControllerName ($($supportedcontrollers.'Controller Name') | Select-object -first 1)
 
     } elseif ($supportedcontrollers.'Controller Type' -match "HP"){
         # HP
@@ -95,6 +95,9 @@ function Start-EasyRaidCheck{
     if($MissingDrives){
         $MissingDrives          | ConvertTo-Json | Out-File -FilePath "C:\ProgramData\EasyRaidCheck\Drives_Missing.json" -Force
     }
+    if($virtualdrives){
+        $virtualdrives          | ConvertTo-Json | Out-File -FilePath "C:\ProgramData\EasyRaidCheck\Drives_Virtual.json" -Force
+    }
 
     # Output results to screen
     $raidarraydetails | format-table
@@ -102,6 +105,7 @@ function Start-EasyRaidCheck{
         $AllDrives | Select-object Array,DriveNumber,Port,Bay,Status,Reason,Size,Interface,Serial,Model,Temp,'Smart Status' | format-table * -autosize
     } else{
         $AllDrives | format-table * -autosize
+        $virtualdrives | format-table * -autosize
     }
     
     if($faileddrives){

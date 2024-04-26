@@ -6,6 +6,8 @@ function Get-RaidControllerLSI{
         [string]$StorCliCommandvirtualdrivegroup = "/c0 /dall show j",
         [string]$StorCliCommandphysical = "/c0 /eall /sall show j",
         [string]$StorCliCommandphysicalall = "/c0 /eall /sall show all",
+        [string]$StorCliCommandbasicinfo = "show all",
+        [string]$StorCliCommandbasicinfo2 = "/c0 show",
         [string]$controllerName = "Unknown"
     )
     
@@ -15,10 +17,20 @@ function Get-RaidControllerLSI{
         $ArrayStorCLIvirtualdrive = ConvertFrom-Json $ExecuteStoreCLIvirtualdrive
         $ExecuteStoreCLIvirtualdrivegroup = & $StorCLILocation $StorCliCommandvirtualdrivegroup | out-string
         $ArrayStorCLIvirtualdrivegroup = ConvertFrom-Json $ExecuteStoreCLIvirtualdrivegroup
+        $ExecuteStorCliCommandbasicinfo  = & $StorCLILocation $StorCliCommandbasicinfo
+        $ExecuteStorCliCommandbasicinfo2  = & $StorCLILocation $StorCliCommandbasicinfo2
+
         } catch {
             $ScriptError = "StorCli Command has Failed: $($_.Exception.Message)"
             exit
         }
+    # Get number of controllers
+    $LSIcontrollercount     = $ExecuteStorCliCommandbasicinfo |Select-String -Pattern "Number of Controllers\s*=\s*(\d+)" | ForEach-Object { $_.Matches.Groups[1].Value }
+    $LSIcontrollermodel     = $ExecuteStorCliCommandbasicinfo2 | Select-String -Pattern "Product Name\s*=\s*(.*)" | ForEach-Object { $_.Matches.Groups[1].Value.Trim() }
+    $LSIcontrollerserial    = $ExecuteStorCliCommandbasicinfo2 | Select-String -Pattern "Serial Number\s*=\s*(.*)" | ForEach-Object { $_.Matches.Groups[1].Value.Trim() }
+    $LSIcontrollerfirmware  = $ExecuteStorCliCommandbasicinfo2 | Select-String -Pattern "FW Version\s*=\s*(.*)" | ForEach-Object { $_.Matches.Groups[1].Value.Trim() }
+    $LSIcontrollerdriver    = $ExecuteStorCliCommandbasicinfo2 | Select-String -Pattern "Driver Version\s*=\s*(.*)" | ForEach-Object { $_.Matches.Groups[1].Value.Trim() }
+
     #Wipe Raid Status
     $RAIDStatus = ""
     $PhysicalStatus = ""
@@ -50,12 +62,38 @@ function Get-RaidControllerLSI{
             { $_ -eq 'Optl' } { "success"; break }
             default { "danger" } 
         }
+        if ($($VirtualDrive.'Cache')-eq 'RWBD' ) {
+            $ReadAhead = $true
+            $WriteBack = $true
+        }
+        if ($($VirtualDrive.'Cache')-eq 'RAWBD' ) {
+            $ReadAhead = $true
+            $WriteBack = $true
+        }
+        if ($($VirtualDrive.'Cache')-eq 'NRWTD' ) {
+            $ReadAhead = $false
+            $WriteBack = $false
+        }
+        if ($($VirtualDrive.'Cache')-eq 'RWTD' ) {
+            $ReadAhead = $true
+            $WriteBack = $false
+        }
+        if ($($VirtualDrive.'Cache')-eq 'NRWBD' ) {
+            $ReadAhead = $false
+            $WriteBack = $true
+        }
+        if ($($VirtualDrive.'Cache')-eq 'NRAWBD' ) {
+            $ReadAhead = $false
+            $WriteBack = $true
+        }
         $virtualdrives.Add([PSCustomObject]@{
             Array               = $($VirtualDrive.'DG/VD')
             Type                = $($VirtualDrive.'TYPE')
             Status              = $($VirtualDrive.'State')
             Access              = $($VirtualDrive.'Access')
             Cache               = $($VirtualDrive.'Cache')
+            ReadAhead           = $ReadAhead
+            WriteBack           = $WriteBack
             Size                = $($VirtualDrive.'Size')
             Name                = $($VirtualDrive.'Name')
             RowColour           = $RowColour
@@ -147,10 +185,13 @@ function Get-RaidControllerLSI{
     }
     $raidarraydetails = New-Object System.Collections.Generic.List[Object]
     $raidarraydetails.Add([PSCustomObject]@{
-        Controller              = $controllerName
+        Controller              = $LSIcontrollermodel
+        ControllerCount         = $LSIcontrollercount
+        ReadAhead               = $virtualdrives.ReadAhead | Select-Object -First 1
+        WriteBack               = $virtualdrives.WriteBack | Select-Object -First 1
         VirtualStatus           = $RAIDStatus
         PhysicalStatus          = $RAIDphysicalstatus
     })
     
-    return $raidarraydetails, $AllDrives, $FailedDrives, $FailedVirtualDrives, $MissingDrives
+    return $raidarraydetails, $AllDrives, $FailedDrives, $FailedVirtualDrives, $MissingDrives, $virtualdrives
 }
