@@ -407,7 +407,7 @@ function Get-RaidControllerHPPreReq {
         try {
             Write-Verbose "HP CLI downloading and installing"
             Invoke-WebRequest -Uri $hpurl -OutFile $hpoutput
-            Start-Process -FilePath $hpoutput -ArgumentList "/s"
+            Start-Process -FilePath $hpoutput -ArgumentList "/s" -wait
             Copy-Item -Path $hpCLILocation -Destination $hpfolder -Force
         }catch{
             Write-Error "An error occurred: $_"
@@ -420,7 +420,7 @@ function Get-RaidControllerHPPreReq {
         try {
             Write-Verbose "HP ADU downloading and installing"
             Invoke-WebRequest -Uri $hpurl2 -OutFile $hpoutput2
-            Start-Process -FilePath $hpoutput2 -ArgumentList "/s"
+            Start-Process -FilePath $hpoutput2 -ArgumentList "/s" -wait
             Copy-Item -Path $hpCLILocation2 -Destination $hpfolder -Force
         }catch{
             Write-Error "An error occurred: $_"
