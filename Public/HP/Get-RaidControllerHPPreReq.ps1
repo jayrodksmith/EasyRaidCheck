@@ -1,10 +1,10 @@
 function Get-RaidControllerHPPreReq {
     [CmdletBinding()]
     param (
-        $hpurl = "https://downloads.hpe.com/pub/softlib2/software1/sc-windows/p632700740/v238698/cp044527.exe", # URL for HP CLI
-        $hpurl2 = "https://downloads.hpe.com/pub/softlib2/software1/sc-windows/p1394061884/v238699/cp044528.exe",# URL for HP ADU
-        $hpoutput = "$($env:windir)\temp\cp044527.exe",
-        $hpoutput2 = "$($env:windir)\temp\cp044528.exe",
+        $hpurl = "https://downloads.hpe.com/pub/softlib2/software1/sc-windows/p632700740/v238698/cp058578.exe", # URL for HP CLI
+        $hpurl2 = "https://downloads.hpe.com/pub/softlib2/software1/sc-windows/p1394061884/v238699/cp058579.exe",# URL for HP ADU
+        $hpoutput = "$($env:windir)\temp\cp058578.exe",
+        $hpoutput2 = "$($env:windir)\temp\cp058579.exe",
         $hpCLILocation = 'C:\Program Files\Smart Storage Administrator\ssacli\bin\ssacli.exe',
         $hpCLILocation2 = 'C:\Program Files\Smart Storage Administrator\ssaducli\bin\ssaducli.exe',
         $hpLocationcli = "",
