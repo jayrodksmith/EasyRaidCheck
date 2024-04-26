@@ -18,7 +18,7 @@ function Get-SMARTInfo {
     $smartalldrives = @()
     $drive = New-Object -TypeName PSObject
 
-    Get-Content (Join-Path -Path $CDIPath -ChildPath 'DiskInfo.txt') | ForEach-Object {
+    Get-Content (Join-Path -Path "C:\ProgramData\EasyRaidCheck\Crystaldiskinfo\DiskInfo.txt") | ForEach-Object {
         # Check if the line contains drive information
         if ($_ -match 'Model : (.*)') {
             # Add collected information to the drive object
