@@ -450,7 +450,7 @@ function Get-SMARTInfo {
     $smartalldrives = @()
     $drive = New-Object -TypeName PSObject
 
-    Get-Content (Join-Path -Path $CDIPath -ChildPath 'DiskInfo.txt') | ForEach-Object {
+    Get-Content (Join-Path -Path "C:\ProgramData\EasyRaidCheck\Crystaldiskinfo\DiskInfo.txt") | ForEach-Object {
         # Check if the line contains drive information
         if ($_ -match 'Model : (.*)') {
             # Add collected information to the drive object
@@ -696,7 +696,7 @@ function Get-RaidControllerLSIPreReq {
         try {
             Write-Verbose "LSI Tools downloading and extracting"
             Invoke-WebRequest -Uri $lsiurl -OutFile $lsioutput
-            Expand-File -File $lsioutput -Destination $lsifolder
+            Expand-File -File $lsioutput -Destination $lsifolder -force
             Move-Item -Path $lsiCLILocationtemp -Destination $lsifolder -Force
             Remove-Item -Path "C:\ProgramData\EasyRaidCheck\LSI\Intel_StorCLI_007.1907.0000.0000" -Recurse
         }catch{
