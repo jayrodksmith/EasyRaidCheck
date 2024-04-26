@@ -85,7 +85,7 @@ function Start-EasyRaidCheck{
 
     if ($supportedcontrollers.'Controller Type' -match "LSI"){
         # LSI
-        $raidarraydetails, $AllDrives, $FailedDrives, $FailedVirtualDrives, $MissingDrives, $virtualdrives  = Get-RaidControllerLSI -StorCLILocation $storecli64 -ControllerName ($($supportedcontrollers.'Controller Name') | Select-object -first 1)
+        $raidarraydetails, $AllDrives, $virtualdrives, $FailedDrives, $FailedVirtualDrives, $MissingDrives  = Get-RaidControllerLSI -StorCLILocation $storecli64 -ControllerName ($($supportedcontrollers.'Controller Name') | Select-object -first 1)
 
     } elseif ($supportedcontrollers.'Controller Type' -match "HP"){
         # HP
@@ -163,7 +163,7 @@ function Start-EasyRaidCheck{
         $virtualdrives | format-table * -autosize
     }
     
-    if($faileddrives){
+    if($faileddrives -ne $null){
         Write-Output "Failed Drive Information"
         if($supported -ne $false) {
             $faileddrives | Select-object Array,DriveNumber,Port,Bay,Status,Reason,Size,Interface,Serial,Model,Temp,'Smart Status' | format-table * -autosize
@@ -719,7 +719,7 @@ function Get-RaidControllerLSI{
         PhysicalStatus          = $RAIDphysicalstatus
     })
     
-    return $raidarraydetails, $AllDrives, $FailedDrives, $FailedVirtualDrives, $MissingDrives, $virtualdrives
+    return $raidarraydetails, $AllDrives, $virtualdrives, $FailedDrives, $FailedVirtualDrives, $MissingDrives
 }
 
 function Get-RaidControllerLSIPreReq {
