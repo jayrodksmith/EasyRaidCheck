@@ -1,7 +1,7 @@
 function Get-RaidControllerLSI{
     [CmdletBinding()]
     param (
-        [string]$StorCLILocation = 'C:\ProgramData\EasyRaidCheck\LSI\storcli64.exe',
+        [string]$StorCLILocation = "",
         [string]$StorCliCommandvirtualdrive = "/c0 /vall show j",
         [string]$StorCliCommandvirtualdrivegroup = "/c0 /dall show j",
         [string]$StorCliCommandphysical = "/c0 /eall /sall show j",

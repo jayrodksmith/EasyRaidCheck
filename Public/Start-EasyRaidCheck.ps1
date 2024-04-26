@@ -30,7 +30,7 @@ function Start-EasyRaidCheck{
 
     if ($supportedcontrollers.'Controller Type' -match "LSI"){
         # LSI
-        $raidarraydetails, $AllDrives, $FailedDrives, $FailedVirtualDrives, $MissingDrives  = Get-RaidControllerLSI -percCLILocation $perccli64 -ControllerName ($($supportedcontrollers.'Controller Name') | Select-object -first 1)
+        $raidarraydetails, $AllDrives, $FailedDrives, $FailedVirtualDrives, $MissingDrives  = Get-RaidControllerLSI -StorCLILocation $storecli64 -ControllerName ($($supportedcontrollers.'Controller Name') | Select-object -first 1)
 
     } elseif ($supportedcontrollers.'Controller Type' -match "HP"){
         # HP
