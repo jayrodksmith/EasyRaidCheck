@@ -415,6 +415,7 @@ function Get-RaidControllerHPPreReq {
             Copy-Item -Path $hpCLILocation -Destination $hpfolder -Force
         }catch{
             Write-Error "An error occurred: $_"
+            exit 888
         }
     }else{
         Write-Verbose "HP CLI already installed"
@@ -428,6 +429,7 @@ function Get-RaidControllerHPPreReq {
             Copy-Item -Path $hpCLILocation2 -Destination $hpfolder -Force
         }catch{
             Write-Error "An error occurred: $_"
+            exit 888
         }
     }else{
         Write-Verbose "HP ADU already installed"
@@ -518,6 +520,7 @@ function Get-SMARTPreReq {
             Expand-File -File $crystaloutput -Destination $crystalextract
         }catch{
             Write-Error "An error occurred: $_"
+            exit 888
         }
     }else{
         Write-Verbose "CrystalDiskInfo already exists"
@@ -602,7 +605,7 @@ function Get-RaidControllerLSI{
         }
         if ($($VirtualDrive.'Cache')-eq 'RWTD' ) {
             $ReadAhead = $true
-            $WriteBack = $false
+            $WriteBack = $true
         }
         if ($($VirtualDrive.'Cache')-eq 'NRWBD' ) {
             $ReadAhead = $false
@@ -746,6 +749,7 @@ function Get-RaidControllerLSIPreReq {
             Remove-Item -Path "C:\ProgramData\EasyRaidCheck\LSI\Intel_StorCLI_007.1907.0000.0000" -Recurse
         }catch{
             Write-Error "An error occurred: $_"
+            exit 888
         }
     }else{
         Write-Verbose "LSI Tools already exists"
@@ -928,6 +932,7 @@ function Get-RaidControllerPERCPreReq {
             Invoke-WebRequest -Uri $percurl -OutFile $percLocation
         }catch{
             Write-Error "An error occurred: $_"
+            exit 888
         }
     }else{
         Write-Verbose "PERC Tools already exists"
