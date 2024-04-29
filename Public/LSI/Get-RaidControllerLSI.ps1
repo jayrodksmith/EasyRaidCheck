@@ -76,7 +76,7 @@ function Get-RaidControllerLSI{
         }
         if ($($VirtualDrive.'Cache')-eq 'RWTD' ) {
             $ReadAhead = $true
-            $WriteBack = $false
+            $WriteBack = $true
         }
         if ($($VirtualDrive.'Cache')-eq 'NRWBD' ) {
             $ReadAhead = $false

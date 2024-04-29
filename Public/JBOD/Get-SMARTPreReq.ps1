@@ -19,6 +19,7 @@ function Get-SMARTPreReq {
             Expand-File -File $crystaloutput -Destination $crystalextract
         }catch{
             Write-Error "An error occurred: $_"
+            exit 888
         }
     }else{
         Write-Verbose "CrystalDiskInfo already exists"

@@ -24,6 +24,7 @@ function Get-RaidControllerHPPreReq {
             Copy-Item -Path $hpCLILocation -Destination $hpfolder -Force
         }catch{
             Write-Error "An error occurred: $_"
+            exit 888
         }
     }else{
         Write-Verbose "HP CLI already installed"
@@ -37,6 +38,7 @@ function Get-RaidControllerHPPreReq {
             Copy-Item -Path $hpCLILocation2 -Destination $hpfolder -Force
         }catch{
             Write-Error "An error occurred: $_"
+            exit 888
         }
     }else{
         Write-Verbose "HP ADU already installed"

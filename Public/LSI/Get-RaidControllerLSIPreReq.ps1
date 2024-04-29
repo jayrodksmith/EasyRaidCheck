@@ -22,6 +22,7 @@ function Get-RaidControllerLSIPreReq {
             Remove-Item -Path "C:\ProgramData\EasyRaidCheck\LSI\Intel_StorCLI_007.1907.0000.0000" -Recurse
         }catch{
             Write-Error "An error occurred: $_"
+            exit 888
         }
     }else{
         Write-Verbose "LSI Tools already exists"

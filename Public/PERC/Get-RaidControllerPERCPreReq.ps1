@@ -17,6 +17,7 @@ function Get-RaidControllerPERCPreReq {
             Invoke-WebRequest -Uri $percurl -OutFile $percLocation
         }catch{
             Write-Error "An error occurred: $_"
+            exit 888
         }
     }else{
         Write-Verbose "PERC Tools already exists"

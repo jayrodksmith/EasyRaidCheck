@@ -7,6 +7,7 @@
 
 - Added storing results to json
 - Added more supported raid controllers based on LSI
+- Exit code 888 to allow ninja to see script failures
 
 ### Changed
 
