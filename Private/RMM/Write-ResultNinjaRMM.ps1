@@ -2,10 +2,13 @@ function Write-ResultNinjaRMM {
     [CmdletBinding(SupportsShouldProcess)]
     param (
         [string]$fieldWYSIWYGdrives         = '',
+        [string]$fieldWYSIWYGvirtual        = '',
+        [string]$fieldWYSIWYGstatus         = '',
         [string]$fieldraidarraystatus       = '',
         [string]$fieldraidarraydetails      = '',
         [System.Collections.Generic.List[Object]]$resultraidarraydetails     = '',
         [System.Collections.Generic.List[Object]]$resultAllDrives,
+        [System.Collections.Generic.List[Object]]$resultAllvirtual,
         [string]$resultfaileddrives         = ''
     )
     if (-not (Get-Command -Name "Ninja-Property-Set" -ErrorAction SilentlyContinue)) {
@@ -38,8 +41,14 @@ function Write-ResultNinjaRMM {
     if($resultAllDrives){
         if($testninjafieldWYSIWYGdrives -ne $false){
             Write-Verbose "Will try write WYSIWYGdrives value"
-            $htmlTable = ConvertTo-ObjectToHtmlTable -Objects $resultAllDrives
-            $htmlTable | Ninja-Property-Set-Piped -Name $fieldWYSIWYGdrives
+            $htmlTabledrives = ConvertTo-ObjectToHtmlTable -Objects $resultAllDrives
+            $htmlTabledrives | Ninja-Property-Set-Piped -Name $fieldWYSIWYGdrives
+            
+            $htmlTablevirtual = ConvertTo-ObjectToHtmlTable -Objects $resultAllvirtual
+            $htmlTablevirtual | Ninja-Property-Set-Piped -Name $fieldWYSIWYGvirtual
+
+            $htmlTablestatus  = ConvertTo-ObjectToHtmlTable -Objects $resultraidarraydetails
+            $htmlTablestatus  | Ninja-Property-Set-Piped -Name $fieldWYSIWYGstatus 
         }
     }
 }

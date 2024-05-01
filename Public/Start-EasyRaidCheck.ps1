@@ -5,6 +5,8 @@ function Start-EasyRaidCheck{
         [string]$RMM                        = 'NinjaOne',
         # Ninja Custom Fields
         [string]$ninjafieldWYSIWYGdrives    = 'raidtablephysical',          # WYSIWYG field for Ninja
+        [string]$ninjafieldWYSIWYGvirtual   = 'raidtablevirtual',           # WYSIWYG field for Ninja
+        [string]$ninjafieldWYSIWYGstatus    = 'raidtablestatus',            # WYSIWYG field for Ninja
         [string]$ninjafieldraidarraystatus  = 'raidarraystatus',            # Text field for Ninja
         [string]$ninjafieldraidarraydetails = 'raidarraydetails',           # Text field for Ninja
         # Ninja Exit Code
@@ -76,8 +78,8 @@ function Start-EasyRaidCheck{
     }
     # Write Values to Ninja
     if($RMM -eq 'Ninjaone'){
-        Get-FieldsNinjaRMM -fieldWYSIWYGdrives $ninjafieldWYSIWYGdrives -fieldraidarraystatus $ninjafieldraidarraystatus -fieldraidarraydetails $ninjafieldraidarraydetails
-        Write-ResultNinjaRMM -fieldWYSIWYGdrives $ninjafieldWYSIWYGdrives -fieldraidarraystatus $ninjafieldraidarraystatus -fieldraidarraydetails $ninjafieldraidarraydetails -resultraidarraydetails $raidarraydetails -resultAllDrives $AllDrives -resultfaileddrives $faileddrives
+        Get-FieldsNinjaRMM -fieldWYSIWYGdrives $ninjafieldWYSIWYGdrives -fieldWYSIWYGvirtual $ninjafieldWYSIWYGvirtual -fieldWYSIWYGstatus $ninjafieldWYSIWYGstatus -fieldraidarraystatus $ninjafieldraidarraystatus -fieldraidarraydetails $ninjafieldraidarraydetails
+        Write-ResultNinjaRMM -fieldWYSIWYGdrives $ninjafieldWYSIWYGdrives -fieldraidarraystatus $ninjafieldraidarraystatus -fieldraidarraydetails $ninjafieldraidarraydetails -resultraidarraydetails $raidarraydetails -resultAllDrives $AllDrives -resultfaileddrives $faileddrives -resultAllvirtual $virtualdrives
     }
     # Write Values to Json
     if($raidarraydetails){
