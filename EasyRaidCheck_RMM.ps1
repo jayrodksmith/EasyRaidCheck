@@ -134,7 +134,7 @@ function Start-EasyRaidCheck{
     # Write Values to Ninja
     if($RMM -eq 'Ninjaone'){
         Get-FieldsNinjaRMM -fieldWYSIWYGdrives $ninjafieldWYSIWYGdrives -fieldWYSIWYGvirtual $ninjafieldWYSIWYGvirtual -fieldWYSIWYGstatus $ninjafieldWYSIWYGstatus -fieldraidarraystatus $ninjafieldraidarraystatus -fieldraidarraydetails $ninjafieldraidarraydetails
-        Write-ResultNinjaRMM -fieldWYSIWYGdrives $ninjafieldWYSIWYGdrives -fieldraidarraystatus $ninjafieldraidarraystatus -fieldraidarraydetails $ninjafieldraidarraydetails -resultraidarraydetails $raidarraydetails -resultAllDrives $AllDrives -resultfaileddrives $faileddrives -resultAllvirtual $virtualdrives
+        Write-ResultNinjaRMM -fieldWYSIWYGdrives $ninjafieldWYSIWYGdrives -fieldWYSIWYGvirtual $ninjafieldWYSIWYGvirtual -fieldWYSIWYGstatus $ninjafieldWYSIWYGstatus -fieldraidarraystatus $ninjafieldraidarraystatus -fieldraidarraydetails $ninjafieldraidarraydetails -resultraidarraydetails $raidarraydetails -resultAllDrives $AllDrives -resultfaileddrives $faileddrives -resultAllvirtual $virtualdrives
     }
     # Write Values to Json
     if($raidarraydetails){
@@ -1119,13 +1119,15 @@ function Write-ResultNinjaRMM {
     # Set WYSIWYG Custom fields
     if($resultAllDrives){
         if($testninjafieldWYSIWYGdrives -ne $false){
-            Write-Verbose "Will try write WYSIWYGdrives value"
+            Write-Verbose "Will try write $fieldWYSIWYGdrives value"
             $htmlTabledrives = ConvertTo-ObjectToHtmlTable -Objects $resultAllDrives
             $htmlTabledrives | Ninja-Property-Set-Piped -Name $fieldWYSIWYGdrives
             
+            Write-Verbose "Will try write $fieldWYSIWYGvirtual value"
             $htmlTablevirtual = ConvertTo-ObjectToHtmlTable -Objects $resultAllvirtual
             $htmlTablevirtual | Ninja-Property-Set-Piped -Name $fieldWYSIWYGvirtual
 
+            Write-Verbose "Will try write $fieldWYSIWYGstatus value"
             $htmlTablestatus  = ConvertTo-ObjectToHtmlTable -Objects $resultraidarraydetails
             $htmlTablestatus  | Ninja-Property-Set-Piped -Name $fieldWYSIWYGstatus 
         }
