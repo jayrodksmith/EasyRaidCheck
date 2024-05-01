@@ -25,19 +25,19 @@ function Get-FieldsNinjaRMM {
         $testninjafieldWYSIWYGdrives = Ninja-Property-Get $fieldWYSIWYGdrives 2>&1
         if ($testninjafieldWYSIWYGdrives -match "Unable to find the specified field" ){
             Write-Host "Unable to access $fieldWYSIWYGdrives field in ninja"
-            Write-Host "Check permissions of field and that it exists"
+            Write-Host "Check permissions of WYSIWYG field and that it exists"
             Set-Variable testninjafieldWYSIWYGdrives -Value $false -Scope Global -option ReadOnly -Force
         }
         $testninjafieldWYSIWYGvirtual = Ninja-Property-Get $fieldWYSIWYGvirtual 2>&1
         if ($testninjafieldWYSIWYGvirtual -match "Unable to find the specified field" ){
             Write-Host "Unable to access $fieldWYSIWYGvirtual field in ninja"
-            Write-Host "Check permissions of field and that it exists"
+            Write-Host "Check permissions of WYSIWYG field and that it exists"
             Set-Variable testninjafieldWYSIWYGvirtual -Value $false -Scope Global -option ReadOnly -Force
         }
         $testninjafieldWYSIWYGstatus = Ninja-Property-Get $fieldWYSIWYGstatus 2>&1
         if ($testninjafieldWYSIWYGstatus -match "Unable to find the specified field" ){
             Write-Host "Unable to access $fieldWYSIWYGstatus field in ninja"
-            Write-Host "Check permissions of field and that it exists"
+            Write-Host "Check permissions of WYSIWYG field and that it exists"
             Set-Variable testninjafieldWYSIWYGstatus-Value $false -Scope Global -option ReadOnly -Force
         }
         $testninjafieldraidarraystatus  = Ninja-Property-Get $fieldraidarraystatus  2>&1
