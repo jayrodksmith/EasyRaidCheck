@@ -150,6 +150,7 @@ function Get-RaidControllerPERC{
         Controller              = $controllerName
         VirtualStatus           = $RAIDStatus
         PhysicalStatus          = $RAIDphysicalstatus
+        RowColour               = if (($RAIDStatus -eq 'Not Healthy') -or ($RAIDphysicalstatus -eq 'Not Healthy')) {"danger"}else{"success"}
     })
     
     return $raidarraydetails, $AllDrives, $FailedDrives, $FailedVirtualDrives, $MissingDrives

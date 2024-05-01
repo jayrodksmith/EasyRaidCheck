@@ -184,10 +184,6 @@ function Get-RaidControllerLSI{
         $RAIDStatus             = "Healthy"
     }
     $raidarraydetails = New-Object System.Collections.Generic.List[Object]
-    $RowColour = switch ($RAIDStatus) {
-        { $_ -eq 'Healthy' } { "success"; break }
-        default { "danger" } 
-    }
     $raidarraydetails.Add([PSCustomObject]@{
         Controller              = $LSIcontrollermodel
         ControllerCount         = $LSIcontrollercount
