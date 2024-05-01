@@ -60,6 +60,8 @@ function Start-EasyRaidCheck{
         [string]$RMM                        = 'NinjaOne',
         # Ninja Custom Fields
         [string]$ninjafieldWYSIWYGdrives    = 'raidtablephysical',          # WYSIWYG field for Ninja
+        [string]$ninjafieldWYSIWYGvirtual   = 'raidtablevirtual',           # WYSIWYG field for Ninja
+        [string]$ninjafieldWYSIWYGstatus    = 'raidtablestatus',            # WYSIWYG field for Ninja
         [string]$ninjafieldraidarraystatus  = 'raidarraystatus',            # Text field for Ninja
         [string]$ninjafieldraidarraydetails = 'raidarraydetails',           # Text field for Ninja
         # Ninja Exit Code
@@ -131,8 +133,8 @@ function Start-EasyRaidCheck{
     }
     # Write Values to Ninja
     if($RMM -eq 'Ninjaone'){
-        Get-FieldsNinjaRMM -fieldWYSIWYGdrives $ninjafieldWYSIWYGdrives -fieldraidarraystatus $ninjafieldraidarraystatus -fieldraidarraydetails $ninjafieldraidarraydetails
-        Write-ResultNinjaRMM -fieldWYSIWYGdrives $ninjafieldWYSIWYGdrives -fieldraidarraystatus $ninjafieldraidarraystatus -fieldraidarraydetails $ninjafieldraidarraydetails -resultraidarraydetails $raidarraydetails -resultAllDrives $AllDrives -resultfaileddrives $faileddrives
+        Get-FieldsNinjaRMM -fieldWYSIWYGdrives $ninjafieldWYSIWYGdrives -fieldWYSIWYGvirtual $ninjafieldWYSIWYGvirtual -fieldWYSIWYGstatus $ninjafieldWYSIWYGstatus -fieldraidarraystatus $ninjafieldraidarraystatus -fieldraidarraydetails $ninjafieldraidarraydetails
+        Write-ResultNinjaRMM -fieldWYSIWYGdrives $ninjafieldWYSIWYGdrives -fieldraidarraystatus $ninjafieldraidarraystatus -fieldraidarraydetails $ninjafieldraidarraydetails -resultraidarraydetails $raidarraydetails -resultAllDrives $AllDrives -resultfaileddrives $faileddrives -resultAllvirtual $virtualdrives
     }
     # Write Values to Json
     if($raidarraydetails){
@@ -1034,6 +1036,8 @@ function Get-FieldsNinjaRMM {
         [CmdletBinding(SupportsShouldProcess)]
         param (
             [string]$fieldWYSIWYGdrives    = '',
+            [string]$fieldWYSIWYGvirtual   = '',
+            [string]$fieldWYSIWYGstatus    = '',
             [string]$fieldraidarraystatus  = '',
             [string]$fieldraidarraydetails = ''
         )
@@ -1046,6 +1050,18 @@ function Get-FieldsNinjaRMM {
             Write-Host "Unable to access $fieldWYSIWYGdrives field in ninja"
             Write-Host "Check permissions of field and that it exists"
             Set-Variable testninjafieldWYSIWYGdrives -Value $false -Scope Global -option ReadOnly -Force
+        }
+        $testninjafieldWYSIWYGvirtual = Ninja-Property-Get $fieldWYSIWYGvirtual 2>&1
+        if ($testninjafieldWYSIWYGvirtual -match "Unable to find the specified field" ){
+            Write-Host "Unable to access $fieldWYSIWYGvirtual field in ninja"
+            Write-Host "Check permissions of field and that it exists"
+            Set-Variable testninjafieldWYSIWYGvirtual -Value $false -Scope Global -option ReadOnly -Force
+        }
+        $testninjafieldWYSIWYGstatus = Ninja-Property-Get $fieldWYSIWYGstatus 2>&1
+        if ($testninjafieldWYSIWYGstatus -match "Unable to find the specified field" ){
+            Write-Host "Unable to access $fieldWYSIWYGstatus field in ninja"
+            Write-Host "Check permissions of field and that it exists"
+            Set-Variable testninjafieldWYSIWYGstatus-Value $false -Scope Global -option ReadOnly -Force
         }
         $testninjafieldraidarraystatus  = Ninja-Property-Get $fieldraidarraystatus  2>&1
         if ($testninjafieldraidarraystatus  -match "Unable to find the specified field" ){
@@ -1065,10 +1081,13 @@ function Write-ResultNinjaRMM {
     [CmdletBinding(SupportsShouldProcess)]
     param (
         [string]$fieldWYSIWYGdrives         = '',
+        [string]$fieldWYSIWYGvirtual        = '',
+        [string]$fieldWYSIWYGstatus         = '',
         [string]$fieldraidarraystatus       = '',
         [string]$fieldraidarraydetails      = '',
         [System.Collections.Generic.List[Object]]$resultraidarraydetails     = '',
         [System.Collections.Generic.List[Object]]$resultAllDrives,
+        [System.Collections.Generic.List[Object]]$resultAllvirtual,
         [string]$resultfaileddrives         = ''
     )
     if (-not (Get-Command -Name "Ninja-Property-Set" -ErrorAction SilentlyContinue)) {
@@ -1101,8 +1120,14 @@ function Write-ResultNinjaRMM {
     if($resultAllDrives){
         if($testninjafieldWYSIWYGdrives -ne $false){
             Write-Verbose "Will try write WYSIWYGdrives value"
-            $htmlTable = ConvertTo-ObjectToHtmlTable -Objects $resultAllDrives
-            $htmlTable | Ninja-Property-Set-Piped -Name $fieldWYSIWYGdrives
+            $htmlTabledrives = ConvertTo-ObjectToHtmlTable -Objects $resultAllDrives
+            $htmlTabledrives | Ninja-Property-Set-Piped -Name $fieldWYSIWYGdrives
+            
+            $htmlTablevirtual = ConvertTo-ObjectToHtmlTable -Objects $resultAllvirtual
+            $htmlTablevirtual | Ninja-Property-Set-Piped -Name $fieldWYSIWYGvirtual
+
+            $htmlTablestatus  = ConvertTo-ObjectToHtmlTable -Objects $resultraidarraydetails
+            $htmlTablestatus  | Ninja-Property-Set-Piped -Name $fieldWYSIWYGstatus 
         }
     }
 }
