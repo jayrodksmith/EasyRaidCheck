@@ -1064,7 +1064,7 @@ function Get-FieldsNinjaRMM {
         if ($testninjafieldWYSIWYGstatus -match "Unable to find the specified field" ){
             Write-Host "Unable to access $fieldWYSIWYGstatus field in ninja"
             Write-Host "Check permissions of WYSIWYG field and that it exists"
-            Set-Variable testninjafieldWYSIWYGstatus-Value $false -Scope Global -option ReadOnly -Force
+            Set-Variable testninjafieldWYSIWYGstatus -Value $false -Scope Global -option ReadOnly -Force
         }
         $testninjafieldraidarraystatus  = Ninja-Property-Get $fieldraidarraystatus  2>&1
         if ($testninjafieldraidarraystatus  -match "Unable to find the specified field" ){
@@ -1125,11 +1125,17 @@ function Write-ResultNinjaRMM {
             Write-Verbose "Will try write $fieldWYSIWYGdrives value"
             $htmlTabledrives = ConvertTo-ObjectToHtmlTable -Objects $resultAllDrives
             $htmlTabledrives | Ninja-Property-Set-Piped -Name $fieldWYSIWYGdrives
-            
+        }
+    }
+    if($resultAllvirtual){
+        if($testninjafieldWYSIWYGvirtual -ne $false){
             Write-Verbose "Will try write $fieldWYSIWYGvirtual value"
             $htmlTablevirtual = ConvertTo-ObjectToHtmlTable -Objects $resultAllvirtual
             $htmlTablevirtual | Ninja-Property-Set-Piped -Name $fieldWYSIWYGvirtual
-
+        }
+    }
+    if($resultraidarraydetails){
+        if($testninjafieldWYSIWYGtatus -ne $false){
             Write-Verbose "Will try write $fieldWYSIWYGstatus value"
             $htmlTablestatus  = ConvertTo-ObjectToHtmlTable -Objects $resultraidarraydetails
             $htmlTablestatus  | Ninja-Property-Set-Piped -Name $fieldWYSIWYGstatus 
