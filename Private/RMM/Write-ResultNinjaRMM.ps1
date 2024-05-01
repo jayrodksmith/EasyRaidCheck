@@ -40,13 +40,15 @@ function Write-ResultNinjaRMM {
     # Set WYSIWYG Custom fields
     if($resultAllDrives){
         if($testninjafieldWYSIWYGdrives -ne $false){
-            Write-Verbose "Will try write WYSIWYGdrives value"
+            Write-Verbose "Will try write $fieldWYSIWYGdrives value"
             $htmlTabledrives = ConvertTo-ObjectToHtmlTable -Objects $resultAllDrives
             $htmlTabledrives | Ninja-Property-Set-Piped -Name $fieldWYSIWYGdrives
             
+            Write-Verbose "Will try write $fieldWYSIWYGvirtual value"
             $htmlTablevirtual = ConvertTo-ObjectToHtmlTable -Objects $resultAllvirtual
             $htmlTablevirtual | Ninja-Property-Set-Piped -Name $fieldWYSIWYGvirtual
 
+            Write-Verbose "Will try write $fieldWYSIWYGstatus value"
             $htmlTablestatus  = ConvertTo-ObjectToHtmlTable -Objects $resultraidarraydetails
             $htmlTablestatus  | Ninja-Property-Set-Piped -Name $fieldWYSIWYGstatus 
         }
