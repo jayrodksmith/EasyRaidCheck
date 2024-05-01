@@ -386,6 +386,7 @@ function Get-RaidControllerHP{
         Controller              = $controllerName
         VirtualStatus           = $RAIDStatus
         PhysicalStatus          = $RAIDphysicalstatus
+        RowColour               = if (($RAIDStatus -eq 'Not Healthy') -or ($RAIDphysicalstatus -eq 'Not Healthy')) {"danger"}else{"success"}
     })
 
     return $raidarraydetails, $AllDrives, $faileddrives
@@ -715,10 +716,6 @@ function Get-RaidControllerLSI{
         $RAIDStatus             = "Healthy"
     }
     $raidarraydetails = New-Object System.Collections.Generic.List[Object]
-    $RowColour = switch ($RAIDStatus) {
-        { $_ -eq 'Healthy' } { "success"; break }
-        default { "danger" } 
-    }
     $raidarraydetails.Add([PSCustomObject]@{
         Controller              = $LSIcontrollermodel
         ControllerCount         = $LSIcontrollercount
@@ -915,6 +912,7 @@ function Get-RaidControllerPERC{
         Controller              = $controllerName
         VirtualStatus           = $RAIDStatus
         PhysicalStatus          = $RAIDphysicalstatus
+        RowColour               = if (($RAIDStatus -eq 'Not Healthy') -or ($RAIDphysicalstatus -eq 'Not Healthy')) {"danger"}else{"success"}
     })
     
     return $raidarraydetails, $AllDrives, $FailedDrives, $FailedVirtualDrives, $MissingDrives
