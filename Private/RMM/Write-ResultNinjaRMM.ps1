@@ -43,11 +43,17 @@ function Write-ResultNinjaRMM {
             Write-Verbose "Will try write $fieldWYSIWYGdrives value"
             $htmlTabledrives = ConvertTo-ObjectToHtmlTable -Objects $resultAllDrives
             $htmlTabledrives | Ninja-Property-Set-Piped -Name $fieldWYSIWYGdrives
-            
+        }
+    }
+    if($resultAllvirtual){
+        if($testninjafieldWYSIWYGvirtual -ne $false){
             Write-Verbose "Will try write $fieldWYSIWYGvirtual value"
             $htmlTablevirtual = ConvertTo-ObjectToHtmlTable -Objects $resultAllvirtual
             $htmlTablevirtual | Ninja-Property-Set-Piped -Name $fieldWYSIWYGvirtual
-
+        }
+    }
+    if($resultraidarraydetails){
+        if($testninjafieldWYSIWYGtatus -ne $false){
             Write-Verbose "Will try write $fieldWYSIWYGstatus value"
             $htmlTablestatus  = ConvertTo-ObjectToHtmlTable -Objects $resultraidarraydetails
             $htmlTablestatus  | Ninja-Property-Set-Piped -Name $fieldWYSIWYGstatus 
