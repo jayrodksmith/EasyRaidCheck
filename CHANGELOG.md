@@ -1,5 +1,12 @@
 # Changelog for EasyRaidCheck
+
 ## [Unreleased]
+
+### Added
+
+- HP rebuild percentage status in table
+- HP Array status to table
+- PERC Array Status to table
 
 ## [1.4.0] - 25-04-2024
 
