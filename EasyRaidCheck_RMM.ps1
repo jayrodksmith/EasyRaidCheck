@@ -91,10 +91,10 @@ function Start-EasyRaidCheck{
 
     } elseif ($supportedcontrollers.'Controller Type' -match "HP"){
         # HP
-        $raidarraydetails, $AllDrives, $faileddrives                                        = Get-RaidControllerHP -hpCLIlocation $ssacli -hpADUlocation $ssaducli -ControllerName ($($supportedcontrollers.'Controller Name') | Select-object -first 1)
+        $raidarraydetails, $AllDrives, $virtualdrives, $faileddrives                                        = Get-RaidControllerHP -hpCLIlocation $ssacli -hpADUlocation $ssaducli -ControllerName ($($supportedcontrollers.'Controller Name') | Select-object -first 1)
     } elseif ($supportedcontrollers.'Controller Type' -match "PERC"){
-        # HP
-        $raidarraydetails, $AllDrives, $faileddrives                                        = Get-RaidControllerPERC -percCLILocation $perccli64 -ControllerName ($($supportedcontrollers.'Controller Name') | Select-object -first 1)
+        # PERC
+        $raidarraydetails, $AllDrives, $virtualdrives, $faileddrives, $FailedVirtualDrives, $MissingDrives  = Get-RaidControllerPERC -percCLILocation $perccli64 -ControllerName ($($supportedcontrollers.'Controller Name') | Select-object -first 1)
     } else {
         Write-Output "No Supported Controllers"
         $supported = $false
@@ -381,6 +381,41 @@ function Get-RaidControllerHP{
         $RAIDStatus = "Healthy"
     }
 
+    # Define regular expressions to extract information
+    $arrayRegex = 'Array\s+(\w+)'
+    $logicalDriveRegex = 'logicaldrive\s+(\d+)\s*\(([^,]+),\s*([^,]+),\s*([^,]+)(?:,\s*([^)]+))?\)'
+
+    # Define a function to extract information from a logical drive string
+    function Get-LogicalDriveInfo {
+        param([string]$array, [string]$logicalDriveString)
+        
+        if ($logicalDriveString -match $logicalDriveRegex) {
+            [PSCustomObject]@{
+                Array               = $array.Trim()
+                Name                = "logicaldrive $($matches[1])"
+                Size                = $matches[2].Trim()
+                RaidType            = $matches[3].Trim()
+                Status              = $matches[4].Trim()
+                Progress            = if ($matches[5]) { $matches[5].Trim() } else { $null }
+                RowColour           = if($matches[4].Trim() -ne "OK" ) {'warning'} else {'success'}
+            }
+        }
+    }
+
+    # Create a list to store logical drive information
+    $virtualdrives = New-Object System.Collections.Generic.List[Object]
+
+    # Extract logical drive information
+    $currentArray = $null
+    foreach ($line in $hpraidstatusslot_ld -split "`n") {
+        if ($line -match $arrayRegex) {
+            $currentArray = $matches[1]
+        }
+        elseif ($line -match 'logicaldrive') {
+            $virtualdrives.Add((Get-LogicalDriveInfo -array $currentArray -logicalDriveString $line))
+        }
+    }
+
     # Extract Percentage if rebuilding
     $rebuildpercentage = [regex]::Match($hpraidstatusslot_ld, '\d+\.\d+%').Value
 
@@ -393,7 +428,7 @@ function Get-RaidControllerHP{
         RowColour               = if (($RAIDStatus -eq 'Not Healthy') -or ($RAIDphysicalstatus -eq 'Not Healthy')) {"danger"}elseif ($rebuildpercentage -ne "") {'warning'}else{"success"}
     })
 
-    return $raidarraydetails, $AllDrives, $faileddrives
+    return $raidarraydetails, $AllDrives, $virtualdrives, $faileddrives
 }
 
 function Get-RaidControllerHPPreReq {
@@ -919,7 +954,7 @@ function Get-RaidControllerPERC{
         RowColour               = if (($RAIDStatus -eq 'Not Healthy') -or ($RAIDphysicalstatus -eq 'Not Healthy')) {"danger"}else{"success"}
     })
     
-    return $raidarraydetails, $AllDrives, $FailedDrives, $FailedVirtualDrives, $MissingDrives
+    return $raidarraydetails, $AllDrives, $virtualdrives, $FailedDrives, $FailedVirtualDrives, $MissingDrives
 }
 
 function Get-RaidControllerPERCPreReq {
