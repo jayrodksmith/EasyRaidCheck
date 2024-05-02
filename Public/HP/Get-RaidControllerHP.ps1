@@ -200,13 +200,17 @@ function Get-RaidControllerHP{
     if (!$RAIDStatus) {
         $RAIDStatus = "Healthy"
     }
-    
+
+    # Extract Percentage if rebuilding
+    $rebuildpercentage = [regex]::Match($hpraidstatusslot_ld, '\d+\.\d+%').Value
+
     $raidarraydetails = New-Object System.Collections.Generic.List[Object]
     $raidarraydetails.Add([PSCustomObject]@{
         Controller              = $controllerName
+        'Rebuild Status'        = if($rebuildpercentage -ne ""){$rebuildpercentage}else{"Not Rebuilding"}
         VirtualStatus           = $RAIDStatus
         PhysicalStatus          = $RAIDphysicalstatus
-        RowColour               = if (($RAIDStatus -eq 'Not Healthy') -or ($RAIDphysicalstatus -eq 'Not Healthy')) {"danger"}else{"success"}
+        RowColour               = if (($RAIDStatus -eq 'Not Healthy') -or ($RAIDphysicalstatus -eq 'Not Healthy')) {"danger"}elseif ($rebuildpercentage -ne "") {'warning'}else{"success"}
     })
 
     return $raidarraydetails, $AllDrives, $faileddrives
