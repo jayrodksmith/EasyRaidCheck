@@ -1,7 +1,7 @@
 function Get-RaidControllerLSI{
     [CmdletBinding()]
     param (
-        [string]$StorCLILocation = "",
+        [string]$StorCLILocation = 'C:\ProgramData\EasyRaidCheck\LSI\storcli64.exe',
         [string]$StorCliCommandvirtualdrive = "/c0 /vall show j",
         [string]$StorCliCommandvirtualdrivegroup = "/c0 /dall show j",
         [string]$StorCliCommandphysical = "/c0 /eall /sall show j",
@@ -189,7 +189,7 @@ function Get-RaidControllerLSI{
     $lines = $ExecuteStorCliCommandrebuildprogress -split "\r?\n"
     # Extract progress and estimated time left from relevant lines
     $lines | Where-Object {$_ -notmatch "Not in progress"} | ForEach-Object {
-        if ($_ -match "(\d+)\s+In progress\s+(\d+\s+\w+\s+\d+\s+\w+)$") {
+        if ($_ -match "(\d+)\s+In progress\s+(.+)$") {
             $rebuildpercentage = $matches[1] + " %"
             $estimatedTimeLeft = $matches[2]
         }
