@@ -5,6 +5,7 @@
 ### Added
 
 - HP rebuild percentage status in table
+- LSI rebuild percentage status in table
 - HP Array status to table
 - PERC Array Status to table
 
