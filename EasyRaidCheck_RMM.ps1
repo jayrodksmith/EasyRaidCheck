@@ -579,6 +579,7 @@ function Get-RaidControllerLSI{
         [string]$StorCliCommandphysicalall = "/c0 /eall /sall show all",
         [string]$StorCliCommandbasicinfo = "show all",
         [string]$StorCliCommandbasicinfo2 = "/c0 show",
+        [string]$StorCliCommandrebuildprogress = "/c0 /eall /sall show rebuild",
         [string]$controllerName = "Unknown"
     )
     
@@ -590,6 +591,7 @@ function Get-RaidControllerLSI{
         $ArrayStorCLIvirtualdrivegroup = ConvertFrom-Json $ExecuteStoreCLIvirtualdrivegroup
         $ExecuteStorCliCommandbasicinfo  = & $StorCLILocation $StorCliCommandbasicinfo
         $ExecuteStorCliCommandbasicinfo2  = & $StorCLILocation $StorCliCommandbasicinfo2
+        $ExecuteStorCliCommandrebuildprogress  = & $StorCLILocation $StorCliCommandrebuildprogress
 
         } catch {
             $ScriptError = "StorCli Command has Failed: $($_.Exception.Message)"
@@ -754,15 +756,27 @@ function Get-RaidControllerLSI{
     } else {
         $RAIDStatus             = "Healthy"
     }
+    # Split the text by line breaks
+    $lines = $ExecuteStorCliCommandrebuildprogress -split "\r?\n"
+    # Extract progress and estimated time left from relevant lines
+    $lines | Where-Object {$_ -notmatch "Not in progress"} | ForEach-Object {
+        if ($_ -match "(\d+)\s+In progress\s+(\d+\s+\w+\s+\d+\s+\w+)$") {
+            $rebuildpercentage = $matches[1] + " %"
+            $estimatedTimeLeft = $matches[2]
+        }
+    }
+
     $raidarraydetails = New-Object System.Collections.Generic.List[Object]
     $raidarraydetails.Add([PSCustomObject]@{
         Controller              = $LSIcontrollermodel
         ControllerCount         = $LSIcontrollercount
+        'Rebuild Status'        = if($rebuildpercentage -ne ""){$rebuildpercentage}else{"Not Rebuilding"}
+        'Rebuild Remaining'     = if($estimatedTimeLeft -ne ""){$estimatedTimeLeft}else{"Not Rebuilding"}
         ReadAhead               = $virtualdrives.ReadAhead | Select-Object -First 1
         WriteBack               = $virtualdrives.WriteBack | Select-Object -First 1
         VirtualStatus           = $RAIDStatus
         PhysicalStatus          = $RAIDphysicalstatus
-        RowColour               = if (($RAIDStatus -eq 'Not Healthy') -or ($RAIDphysicalstatus -eq 'Not Healthy')) {"danger"}else{"success"}
+        RowColour               = if (($RAIDStatus -eq 'Not Healthy') -or ($RAIDphysicalstatus -eq 'Not Healthy')) {"danger"}elseif ($rebuildpercentage -ne "") {'warning'}else{"success"}
     })
     
     return $raidarraydetails, $AllDrives, $virtualdrives, $FailedDrives, $FailedVirtualDrives, $MissingDrives
