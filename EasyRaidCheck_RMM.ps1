@@ -544,7 +544,7 @@ function Get-SMARTInfo {
 function Get-SMARTPreReq {
     [CmdletBinding()]
     param (
-        $crystalurl = "https://ixpeering.dl.sourceforge.net/project/crystaldiskinfo/9.2.3/CrystalDiskInfo9_2_3.zip",
+        $crystalurl = "https://ixpeering.dl.sourceforge.net/project/crystaldiskinfo/9.3.0/CrystalDiskInfo9_3_0.zip?viasf=1",
         $crystaloutput = "$($env:windir)\temp\CrystalDiskInfo.zip",
         $crystalLocation = "",
         $crystalextract = "C:\ProgramData\EasyRaidCheck\Crystaldiskinfo"
