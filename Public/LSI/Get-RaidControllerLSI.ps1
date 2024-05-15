@@ -199,8 +199,8 @@ function Get-RaidControllerLSI{
     $raidarraydetails.Add([PSCustomObject]@{
         Controller              = $LSIcontrollermodel
         ControllerCount         = $LSIcontrollercount
-        'Rebuild Status'        = if($rebuildpercentage -ne ""){$rebuildpercentage}else{"Not Rebuilding"}
-        'Rebuild Remaining'     = if($estimatedTimeLeft -ne ""){$estimatedTimeLeft}else{"Not Rebuilding"}
+        'Rebuild Status'        = if($rebuildpercentage){$rebuildpercentage}else{"Not Rebuilding"}
+        'Rebuild Remaining'     = if($estimatedTimeLeft){$estimatedTimeLeft}else{"Not Rebuilding"}
         ReadAhead               = $virtualdrives.ReadAhead | Select-Object -First 1
         WriteBack               = $virtualdrives.WriteBack | Select-Object -First 1
         VirtualStatus           = $RAIDStatus
