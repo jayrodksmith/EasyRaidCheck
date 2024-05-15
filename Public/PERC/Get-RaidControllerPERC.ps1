@@ -1,30 +1,43 @@
-function Get-RaidControllerPERC{
+function Get-RaidControllerLSI{
     [CmdletBinding()]
     param (
-        [string]$percCLILocation = "",
-        [string]$percCliCommandvirtualdrive = "/c0 /vall show j",
-        [string]$percCliCommandvirtualdrivegroup = "/c0 /dall show j",
-        [string]$percCliCommandphysical = "/c0 /eall /sall show j",
-        [string]$percCliCommandphysicalall = "/c0 /eall /sall show all",
+        [string]$PercCLILocation = 'C:\ProgramData\EasyRaidCheck\LSI\perccli64.exe',
+        [string]$PercCLICommandvirtualdrive = "/c0 /vall show j",
+        [string]$PercCLICommandvirtualdrivegroup = "/c0 /dall show j",
+        [string]$PercCLICommandphysical = "/c0 /eall /sall show j",
+        [string]$PercCLICommandphysicalall = "/c0 /eall /sall show all",
+        [string]$PercCLICommandbasicinfo = "show all",
+        [string]$PercCLICommandbasicinfo2 = "/c0 show",
+        [string]$PercCLICommandrebuildprogress = "/c0 /eall /sall show rebuild",
         [string]$controllerName = "Unknown"
     )
     
-    Get-RaidControllerPERCPreReq -percLocation $percCLILocation
+    Get-RaidControllerLSIPreReq -lsiCLILocation $PercCLILocation
     try {
-        $ExecuteStoreCLIvirtualdrive = & $percCLILocation $percCliCommandvirtualdrive | out-string
-        $ArrayStorCLIvirtualdrive = ConvertFrom-Json $ExecuteStoreCLIvirtualdrive
-        $ExecuteStoreCLIvirtualdrivegroup = & $percCLILocation $percCliCommandvirtualdrivegroup | out-string
-        $ArrayStorCLIvirtualdrivegroup = ConvertFrom-Json $ExecuteStoreCLIvirtualdrivegroup
+        $ExecutePercCLIvirtualdrive             = & $PercCLILocation $PercCLICommandvirtualdrive | out-string
+        $ArrayPercCLIvirtualdrive               = ConvertFrom-Json $ExecutePercCLIvirtualdrive
+        $ExecutePercCLIvirtualdrivegroup        = & $PercCLILocation $PercCLICommandvirtualdrivegroup | out-string
+        $ArrayPercCLIvirtualdrivegroup          = ConvertFrom-Json $ExecutePercCLIvirtualdrivegroup
+        $ExecutePercCLICommandbasicinfo         = & $PercCLILocation $PercCLICommandbasicinfo
+        $ExecutePercCLICommandbasicinfo2        = & $PercCLILocation $PercCLICommandbasicinfo2
+        $ExecutePercCLICommandrebuildprogress   = & $PercCLILocation $PercCLICommandrebuildprogress
         } catch {
-            $ScriptError = "StorCli Command has Failed: $($_.Exception.Message)"
+            $ScriptError = "PercCLI Command has Failed: $($_.Exception.Message)"
             exit
         }
+    # Get number of controllers
+    $PERCcontrollercount     = $ExecutePercCLICommandbasicinfo  | Select-String -Pattern "Number of Controllers\s*=\s*(\d+)" | ForEach-Object { $_.Matches.Groups[1].Value }
+    $PERCcontrollermodel     = $ExecutePercCLICommandbasicinfo2 | Select-String -Pattern "Product Name\s*=\s*(.*)" | ForEach-Object { $_.Matches.Groups[1].Value.Trim() }
+    $PERCcontrollerserial    = $ExecutePercCLICommandbasicinfo2 | Select-String -Pattern "Serial Number\s*=\s*(.*)" | ForEach-Object { $_.Matches.Groups[1].Value.Trim() }
+    $PERCcontrollerfirmware  = $ExecutePercCLICommandbasicinfo2 | Select-String -Pattern "FW Version\s*=\s*(.*)" | ForEach-Object { $_.Matches.Groups[1].Value.Trim() }
+    $PERCcontrollerdriver    = $ExecutePercCLICommandbasicinfo2 | Select-String -Pattern "Driver Version\s*=\s*(.*)" | ForEach-Object { $_.Matches.Groups[1].Value.Trim() }
+
     #Wipe Raid Status
     $RAIDStatus = ""
     $PhysicalStatus = ""
     # Get Virtual Drive Status + Physical
     $virtualdrivesgroup = New-Object System.Collections.Generic.List[Object]
-    foreach($VirtualDrivegroup in $ArrayStorCLIvirtualdrivegroup.Controllers.'response data'.'response data'.'TOPOLOGY'){
+    foreach($VirtualDrivegroup in $ArrayPercCLIvirtualdrivegroup.Controllers.'response data'.'response data'.'TOPOLOGY'){
         $RowColour = switch ($($VirtualDrivegroup.State)) {
             { $_ -eq 'Onln' } { "success"; break }
             { $_ -eq 'Optl' } { "success"; break }
@@ -45,10 +58,34 @@ function Get-RaidControllerPERC{
 
     # Get Virtual Drive Status
     $virtualdrives = New-Object System.Collections.Generic.List[Object]
-    foreach($VirtualDrive in $ArrayStorCLIvirtualdrive.Controllers.'response data'.'Virtual Drives'){
+    foreach($VirtualDrive in $ArrayPercCLIvirtualdrive.Controllers.'response data'.'Virtual Drives'){
         $RowColour = switch ($($VirtualDrive.State)) {
             { $_ -eq 'Optl' } { "success"; break }
             default { "danger" } 
+        }
+        if ($($VirtualDrive.'Cache')-eq 'RWBD' ) {
+            $ReadAhead = $true
+            $WriteBack = $true
+        }
+        if ($($VirtualDrive.'Cache')-eq 'RAWBD' ) {
+            $ReadAhead = $true
+            $WriteBack = $true
+        }
+        if ($($VirtualDrive.'Cache')-eq 'NRWTD' ) {
+            $ReadAhead = $false
+            $WriteBack = $false
+        }
+        if ($($VirtualDrive.'Cache')-eq 'RWTD' ) {
+            $ReadAhead = $true
+            $WriteBack = $true
+        }
+        if ($($VirtualDrive.'Cache')-eq 'NRWBD' ) {
+            $ReadAhead = $false
+            $WriteBack = $true
+        }
+        if ($($VirtualDrive.'Cache')-eq 'NRAWBD' ) {
+            $ReadAhead = $false
+            $WriteBack = $true
         }
         $virtualdrives.Add([PSCustomObject]@{
             Array               = $($VirtualDrive.'DG/VD')
@@ -56,17 +93,19 @@ function Get-RaidControllerPERC{
             Status              = $($VirtualDrive.'State')
             Access              = $($VirtualDrive.'Access')
             Cache               = $($VirtualDrive.'Cache')
+            ReadAhead           = $ReadAhead
+            WriteBack           = $WriteBack
             Size                = $($VirtualDrive.'Size')
             Name                = $($VirtualDrive.'Name')
             RowColour           = $RowColour
         })    
     }
     try {
-        $ExecuteStoreCLIphysical = & $percCLILocation $percCliCommandphysical | out-string
-        $ArrayStorCLIphysical = ConvertFrom-Json $ExecuteStoreCLIphysical
-        $ExecuteStoreCLIphysicalall = & $percCLILocation $percCliCommandphysicalall | out-string
+        $ExecutePercCLIphysical = & $PercCLILocation $PercCLICommandphysical | out-string
+        $ArrayPercCLIphysical = ConvertFrom-Json $ExecutePercCLIphysical
+        $ExecutePercCLIphysicalall = & $PercCLILocation $PercCLICommandphysicalall | out-string
         # Convert the multiline string to an array of strings by splitting on new lines
-        $driveEntries = $ExecuteStoreCLIphysicalall -split [System.Environment]::NewLine
+        $driveEntries = $ExecutePercCLIphysicalall -split [System.Environment]::NewLine
 
         # Initialize an empty array to store drive objects
         $driveObjects = @()
@@ -96,13 +135,13 @@ function Get-RaidControllerPERC{
             }
         }
     } catch {
-            $ScriptError = "StorCli Command has Failed: $($_.Exception.Message)"
+            $ScriptError = "PercCLI Command has Failed: $($_.Exception.Message)"
             exit
     }
 
     # Get All Drives
     $AllDrives = New-Object System.Collections.Generic.List[Object]
-    foreach($physicaldrive in $ArrayStorCLIphysical.Controllers.'Response data'.'Drive Information'){
+    foreach($physicaldrive in $ArrayPercCLIphysical.Controllers.'Response data'.'Drive Information'){
         $RowColour = switch ($($physicaldrive.State)) {
             { $_ -eq 'Onln' } { "success"; break }
             { $_ -eq 'GHS' } { "success"; break }
@@ -145,12 +184,27 @@ function Get-RaidControllerPERC{
     } else {
         $RAIDStatus             = "Healthy"
     }
+    # Split the text by line breaks
+    $lines = $ExecutePercCLICommandrebuildprogress -split "\r?\n"
+    # Extract progress and estimated time left from relevant lines
+    $lines | Where-Object {$_ -notmatch "Not in progress"} | ForEach-Object {
+        if ($_ -match "(\d+)\s+In progress\s+(.+)$") {
+            $rebuildpercentage = $matches[1] + " %"
+            $estimatedTimeLeft = $matches[2]
+        }
+    }
+
     $raidarraydetails = New-Object System.Collections.Generic.List[Object]
     $raidarraydetails.Add([PSCustomObject]@{
-        Controller              = $controllerName
+        Controller              = $PERCcontrollermodel
+        ControllerCount         = $PERCcontrollercount
+        'Rebuild Status'        = if($rebuildpercentage -ne ""){$rebuildpercentage}else{"Not Rebuilding"}
+        'Rebuild Remaining'     = if($estimatedTimeLeft -ne ""){$estimatedTimeLeft}else{"Not Rebuilding"}
+        ReadAhead               = $virtualdrives.ReadAhead | Select-Object -First 1
+        WriteBack               = $virtualdrives.WriteBack | Select-Object -First 1
         VirtualStatus           = $RAIDStatus
         PhysicalStatus          = $RAIDphysicalstatus
-        RowColour               = if (($RAIDStatus -eq 'Not Healthy') -or ($RAIDphysicalstatus -eq 'Not Healthy')) {"danger"}else{"success"}
+        RowColour               = if (($RAIDStatus -eq 'Not Healthy') -or ($RAIDphysicalstatus -eq 'Not Healthy')) {"danger"}elseif ($rebuildpercentage -ne "") {'warning'}else{"success"}
     })
     
     return $raidarraydetails, $AllDrives, $virtualdrives, $FailedDrives, $FailedVirtualDrives, $MissingDrives

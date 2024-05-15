@@ -14,20 +14,19 @@ function Get-RaidControllerLSI{
     
     Get-RaidControllerLSIPreReq -lsiCLILocation $StorCLILocation
     try {
-        $ExecuteStoreCLIvirtualdrive = & $StorCLILocation $StorCliCommandvirtualdrive | out-string
-        $ArrayStorCLIvirtualdrive = ConvertFrom-Json $ExecuteStoreCLIvirtualdrive
-        $ExecuteStoreCLIvirtualdrivegroup = & $StorCLILocation $StorCliCommandvirtualdrivegroup | out-string
-        $ArrayStorCLIvirtualdrivegroup = ConvertFrom-Json $ExecuteStoreCLIvirtualdrivegroup
-        $ExecuteStorCliCommandbasicinfo  = & $StorCLILocation $StorCliCommandbasicinfo
-        $ExecuteStorCliCommandbasicinfo2  = & $StorCLILocation $StorCliCommandbasicinfo2
-        $ExecuteStorCliCommandrebuildprogress  = & $StorCLILocation $StorCliCommandrebuildprogress
-
+        $ExecuteStorCLIvirtualdrive             = & $StorCLILocation $StorCliCommandvirtualdrive | out-string
+        $ArrayStorCLIvirtualdrive               = ConvertFrom-Json $ExecuteStorCLIvirtualdrive
+        $ExecuteStorCLIvirtualdrivegroup        = & $StorCLILocation $StorCliCommandvirtualdrivegroup | out-string
+        $ArrayStorCLIvirtualdrivegroup          = ConvertFrom-Json $ExecuteStorCLIvirtualdrivegroup
+        $ExecuteStorCliCommandbasicinfo         = & $StorCLILocation $StorCliCommandbasicinfo
+        $ExecuteStorCliCommandbasicinfo2        = & $StorCLILocation $StorCliCommandbasicinfo2
+        $ExecuteStorCliCommandrebuildprogress   = & $StorCLILocation $StorCliCommandrebuildprogress
         } catch {
             $ScriptError = "StorCli Command has Failed: $($_.Exception.Message)"
             exit
         }
     # Get number of controllers
-    $LSIcontrollercount     = $ExecuteStorCliCommandbasicinfo |Select-String -Pattern "Number of Controllers\s*=\s*(\d+)" | ForEach-Object { $_.Matches.Groups[1].Value }
+    $LSIcontrollercount     = $ExecuteStorCliCommandbasicinfo  | Select-String -Pattern "Number of Controllers\s*=\s*(\d+)" | ForEach-Object { $_.Matches.Groups[1].Value }
     $LSIcontrollermodel     = $ExecuteStorCliCommandbasicinfo2 | Select-String -Pattern "Product Name\s*=\s*(.*)" | ForEach-Object { $_.Matches.Groups[1].Value.Trim() }
     $LSIcontrollerserial    = $ExecuteStorCliCommandbasicinfo2 | Select-String -Pattern "Serial Number\s*=\s*(.*)" | ForEach-Object { $_.Matches.Groups[1].Value.Trim() }
     $LSIcontrollerfirmware  = $ExecuteStorCliCommandbasicinfo2 | Select-String -Pattern "FW Version\s*=\s*(.*)" | ForEach-Object { $_.Matches.Groups[1].Value.Trim() }
@@ -102,11 +101,11 @@ function Get-RaidControllerLSI{
         })    
     }
     try {
-        $ExecuteStoreCLIphysical = & $StorCLILocation $StorCliCommandphysical | out-string
-        $ArrayStorCLIphysical = ConvertFrom-Json $ExecuteStoreCLIphysical
-        $ExecuteStoreCLIphysicalall = & $StorCLILocation $StorCliCommandphysicalall | out-string
+        $ExecuteStorCLIphysical = & $StorCLILocation $StorCliCommandphysical | out-string
+        $ArrayStorCLIphysical = ConvertFrom-Json $ExecuteStorCLIphysical
+        $ExecuteStorCLIphysicalall = & $StorCLILocation $StorCliCommandphysicalall | out-string
         # Convert the multiline string to an array of strings by splitting on new lines
-        $driveEntries = $ExecuteStoreCLIphysicalall -split [System.Environment]::NewLine
+        $driveEntries = $ExecuteStorCLIphysicalall -split [System.Environment]::NewLine
 
         # Initialize an empty array to store drive objects
         $driveObjects = @()

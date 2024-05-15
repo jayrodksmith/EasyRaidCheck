@@ -51,29 +51,49 @@ function Start-EasyRaidCheck{
     }
     # Retrieve Smart Details using CrystalDiskInfo if set to true
     if($Smartinfo -eq $true){
-        $smartalldrives, $smartFailedDrives                                                 = Get-SMARTInfo -CDIPath $DiskInfo64 
+        $smartalldrives, $smartFailedDrives = Get-SMARTInfo -CDIPath $DiskInfo64
         # Check existing results and merge results if found.
         if ($supported -ne $false){
             foreach ($drive in $alldrives) {
                 $serial = $($drive.Serial)
                 $smartDrive = $smartalldrives | Where-Object { $_.'Serial Number' -match $serial }
-            
                 if ($smartDrive) {
                     # Merge existing fields from $smartalldrives into $alldrives and set danger flag if required
-                    $drive.'Smart Status' = $($smartDrive.'Health Status')
-                    $drive.'Power On Hours' = $($smartDrive.'Power On Hours')
+                    $drive.'Smart Status'       = $($smartDrive.'Health Status')
+                    $drive.'Power On Hours'     = $($smartDrive.'Power On Hours')
+                    $drive.'DriveLetter'       = $($smartDrive.'Driver Letter')
                     if($null -eq $drive.'Temp'){
-                        $drive.'Temp' = [regex]::Match($($smartDrive.'Temperature'), '^(\d+) C').Groups[1].Value
+                        $drive.'Temp' = $($smartDrive.'Temperature')
+                    }
+                    if($null -eq $drive.'Size'){
+                        $drive.'Size' = $($smartDrive.'Disk Size')
+                    }
+                    if($null -eq $drive.'Model'){
+                        $drive.'Model' = $($smartDrive.'Model')
                     }
                     $percentage = [regex]::Match($drive.'Smart Status', '\((\d+)\s*%\)').Groups[1].Value
                     if($drive.'Smart Status' -notmatch '\bGood\b' -and $null -ne $drive.'Smart Status' -and $drive.'Smart Status' -notmatch '\bUnknown\b'){
                         $drive.'RowColour' = 'danger'
                     }
+                } else {
+                    # Add non-matching drive to $alldrives with specified properties
+                    $newDrive = [PSCustomObject]@{
+                        'Size'              = $drive.'Size' 
+                        'Interface'         = $drive.'Interface' 
+                        'Serial'            = $drive.'Serial'
+                        'Model'             = $drive.'Model' 
+                        'Temp'              = $drive.'Temperature'
+                        'Power On Hours'    = $drive.'Power On Hours'
+                        'Smart Status'      = $drive.'Health Status'
+                        'DriveLetter'       = $drive.'Drive Letter'
+                        'RowColour'         = $drive.'RowColour'
+                    }
+                    $alldrives += $newDrive
                 }
-            }
-        } else {
+            } else {
                 $AllDrives = $smartalldrives
                 $faileddrives = $smartFailedDrives
+            }
         }
     }
     # Write Values to Ninja

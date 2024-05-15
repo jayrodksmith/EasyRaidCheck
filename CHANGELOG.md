@@ -8,10 +8,12 @@
 - LSI rebuild percentage status in table
 - HP Array status to table
 - PERC Array Status to table
+- Added drives not part of array into output
 
 ### Fixed
 
 - CrystalDiskInfo url updated to allow downloads
+- PERC script now matches LSI script
 
 ## [1.4.0] - 25-04-2024
 
