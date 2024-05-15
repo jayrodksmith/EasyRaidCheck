@@ -841,7 +841,7 @@ function Get-RaidControllerLSIPreReq {
     }
 }
 
-function Get-RaidControllerLSI{
+function Get-RaidControllerPERC{
     [CmdletBinding()]
     param (
         [string]$PercCLILocation = 'C:\ProgramData\EasyRaidCheck\LSI\perccli64.exe',
