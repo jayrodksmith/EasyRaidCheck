@@ -145,10 +145,10 @@ function Start-EasyRaidCheck{
                     }
                     $alldrives += $newDrive
                 }
-            } else {
-                $AllDrives = $smartalldrives
-                $faileddrives = $smartFailedDrives
-            }
+            } 
+        } else {
+            $AllDrives = $smartalldrives
+            $faileddrives = $smartFailedDrives
         }
     }
     # Write Values to Ninja
