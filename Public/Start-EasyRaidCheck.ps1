@@ -88,15 +88,22 @@ function Start-EasyRaidCheck{
             $smartDrivenotmatched = $smartalldrives | Where-Object { $_.'Serial Number' -notin $alldrives.Serial }
             foreach ($smartDrive in $smartDrivenotmatched) {
                 $newDrive = [PSCustomObject]@{
-                    'Size' = $smartDrive.'Disk Size'
-                    'Interface' = $smartDrive.'Interface'
-                    'Serial' = $smartDrive.'Serial Number'
-                    'Model' = $smartDrive.'Model'
-                    'Temp' = $smartDrive.'Temperature'
-                    'Power On Hours' = $smartDrive.'Power On Hours'
-                    'Smart Status' = $smartDrive.'Health Status'
-                    'DriveLetter' = $smartDrive.'Drive Letter'
-                    'RowColour' = $smartDrive.'RowColour'
+                    'Array'             = $null
+                    'DriveNumber'       = $null
+                    'Port'              = $null
+                    'Bay'               = $null
+                    'Status'            = $null
+                    'Reason'            = $null
+                    'Size'              = $smartDrive.'Disk Size'
+                    'Interface'         = $smartDrive.'Interface'
+                    'Serial'            = $smartDrive.'Serial Number'
+                    'Model'             = $smartDrive.'Model'
+                    'Temp'              = $smartDrive.'Temperature'
+                    'Max Temp'          = $null
+                    'Smart Status'      = $smartDrive.'Health Status'
+                    'Power On Hours'    = $smartDrive.'Power On Hours'
+                    'DriveLetter'       = $smartDrive.'Drive Letter'
+                    'RowColour'         = $smartDrive.'RowColour'
                 }
                 $updatedDrives += $newDrive
             }
