@@ -806,7 +806,7 @@ function Get-RaidControllerLSI{
         WriteBack               = $virtualdrives.WriteBack | Select-Object -First 1
         VirtualStatus           = $RAIDStatus
         PhysicalStatus          = $RAIDphysicalstatus
-        RowColour               = if (($RAIDStatus -eq 'Not Healthy') -or ($RAIDphysicalstatus -eq 'Not Healthy')) {"danger"}elseif ($rebuildpercentage -ne "") {'warning'}else{"success"}
+        RowColour               = if (($RAIDStatus -eq 'Not Healthy') -or ($RAIDphysicalstatus -eq 'Not Healthy')) {"danger"}elseif ($rebuildpercentage) {'warning'}else{"success"}
     })
     
     return $raidarraydetails, $AllDrives, $virtualdrives, $FailedDrives, $FailedVirtualDrives, $MissingDrives
@@ -1050,7 +1050,7 @@ function Get-RaidControllerPERC{
         WriteBack               = $virtualdrives.WriteBack | Select-Object -First 1
         VirtualStatus           = $RAIDStatus
         PhysicalStatus          = $RAIDphysicalstatus
-        RowColour               = if (($RAIDStatus -eq 'Not Healthy') -or ($RAIDphysicalstatus -eq 'Not Healthy')) {"danger"}elseif ($rebuildpercentage -ne "") {'warning'}else{"success"}
+        RowColour               = if (($RAIDStatus -eq 'Not Healthy') -or ($RAIDphysicalstatus -eq 'Not Healthy')) {"danger"}elseif ($rebuildpercentage) {'warning'}else{"success"}
     })
     
     return $raidarraydetails, $AllDrives, $virtualdrives, $FailedDrives, $FailedVirtualDrives, $MissingDrives
