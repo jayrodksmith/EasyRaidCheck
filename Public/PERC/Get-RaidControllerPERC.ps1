@@ -165,6 +165,7 @@ function Get-RaidControllerPERC{
             'Max Temp'          = $null
             'Smart Status'      = $null
             'Power On Hours'    = $null
+            'DriveLetter'       = $null
             RowColour           = $RowColour
         })    
     }

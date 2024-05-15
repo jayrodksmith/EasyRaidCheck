@@ -183,6 +183,7 @@ function Get-RaidControllerHP{
             'Max Temp'                  = $Maximumtemperature
             'Smart Status'              = $null
             'Power On Hours'            = ( $hpsmartdetails | Where-Object -Property 'Serial Number' -eq $serialNumber | Select-Object -ExpandProperty 'Power-on Hours' )
+            'DriveLetter'               = $null
             RowColour                   = $RowColour
         })
     }
