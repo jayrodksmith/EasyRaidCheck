@@ -50,49 +50,60 @@ function Start-EasyRaidCheck{
 
     }
     # Retrieve Smart Details using CrystalDiskInfo if set to true
-    if($Smartinfo -eq $true){
+    if ($Smartinfo -eq $true) {
         $smartalldrives, $smartFailedDrives = Get-SMARTInfo -CDIPath $DiskInfo64
+    
         # Check existing results and merge results if found.
-        if ($supported -ne $false){
+        if ($supported -ne $false) {
+            $updatedDrives = @()
             foreach ($drive in $alldrives) {
                 $serial = $($drive.Serial)
-                $smartDrive = $smartalldrives | Where-Object { $_.'Serial Number' -match $serial }
+                $smartDrive = $smartalldrives | Where-Object { $_.'Serial Number' -eq $serial }
                 if ($smartDrive) {
                     # Merge existing fields from $smartalldrives into $alldrives and set danger flag if required
-                    $drive.'Smart Status'       = $($smartDrive.'Health Status')
-                    $drive.'Power On Hours'     = $($smartDrive.'Power On Hours')
-                    $drive.'DriveLetter'       = $($smartDrive.'Driver Letter')
-                    if($null -eq $drive.'Temp'){
+                    $drive.'Smart Status' = $($smartDrive.'Health Status')
+                    $drive.'Power On Hours' = $($smartDrive.'Power On Hours')
+                    $drive.'DriveLetter' = $($smartDrive.'Drive Letter')
+                    if ($null -eq $drive.'Temp') {
                         $drive.'Temp' = $($smartDrive.'Temperature')
                     }
-                    if($null -eq $drive.'Size'){
+                    if ($null -eq $drive.'Size') {
                         $drive.'Size' = $($smartDrive.'Disk Size')
                     }
-                    if($null -eq $drive.'Model'){
+                    if ($null -eq $drive.'Model') {
                         $drive.'Model' = $($smartDrive.'Model')
                     }
                     $percentage = [regex]::Match($drive.'Smart Status', '\((\d+)\s*%\)').Groups[1].Value
-                    if($drive.'Smart Status' -notmatch '\bGood\b' -and $null -ne $drive.'Smart Status' -and $drive.'Smart Status' -notmatch '\bUnknown\b'){
+                    if ($drive.'Smart Status' -notmatch '\bGood\b' -and $null -ne $drive.'Smart Status' -and $drive.'Smart Status' -notmatch '\bUnknown\b') {
                         $drive.'RowColour' = 'danger'
                     }
+                    $updatedDrives += $drive
                 } else {
-                    # Add non-matching drive to $alldrives with specified properties
-                    $newDrive = [PSCustomObject]@{
-                        'Size'              = $drive.'Size' 
-                        'Interface'         = $drive.'Interface' 
-                        'Serial'            = $drive.'Serial'
-                        'Model'             = $drive.'Model' 
-                        'Temp'              = $drive.'Temperature'
-                        'Power On Hours'    = $drive.'Power On Hours'
-                        'Smart Status'      = $drive.'Health Status'
-                        'DriveLetter'       = $drive.'Drive Letter'
-                        'RowColour'         = $drive.'RowColour'
-                    }
-                    $alldrives += $newDrive
+                    # Add the original drive to the updated list
+                    $updatedDrives += $drive
                 }
-            } 
+            }
+            
+            # Add non-matching smart drives to $updatedDrives
+            $smartDrivenotmatched = $smartalldrives | Where-Object { $_.'Serial Number' -notin $alldrives.Serial }
+            foreach ($smartDrive in $smartDrivenotmatched) {
+                $newDrive = [PSCustomObject]@{
+                    'Size' = $smartDrive.'Disk Size'
+                    'Interface' = $smartDrive.'Interface'
+                    'Serial' = $smartDrive.'Serial Number'
+                    'Model' = $smartDrive.'Model'
+                    'Temp' = $smartDrive.'Temperature'
+                    'Power On Hours' = $smartDrive.'Power On Hours'
+                    'Smart Status' = $smartDrive.'Health Status'
+                    'DriveLetter' = $smartDrive.'Drive Letter'
+                    'RowColour' = $smartDrive.'RowColour'
+                }
+                $updatedDrives += $newDrive
+            }
+            
+            $alldrives = $updatedDrives
         } else {
-            $AllDrives = $smartalldrives
+            $alldrives = $smartalldrives
             $faileddrives = $smartFailedDrives
         }
     }
