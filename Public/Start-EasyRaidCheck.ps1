@@ -88,6 +88,7 @@ function Start-EasyRaidCheck{
             $smartDrivenotmatched = $smartalldrives | Where-Object { $_.'Serial Number' -notin $alldrives.Serial }
             foreach ($smartDrive in $smartDrivenotmatched) {
                 $newDrive = [PSCustomObject]@{
+                    'Controller'        = $null
                     'Array'             = $null
                     'DriveNumber'       = $null
                     'Port'              = $null
@@ -140,20 +141,20 @@ function Start-EasyRaidCheck{
     }
 
     # Output results to screen
-    $raidarraydetails | format-table
+    $raidarraydetails | Format-List
     if($supported -ne $false) {
-        $AllDrives | Select-object Array,DriveNumber,Port,Bay,Status,Reason,Size,Interface,Serial,Model,Temp,'Smart Status' | format-table * -autosize
+        $AllDrives | Select-object Array,Port,Size,Interface,Serial,Model,Temp,'Smart Status' | format-table * -autosize
     } else{
-        $AllDrives | format-table * -autosize
-        $virtualdrives | format-table * -autosize
+        $AllDrives | Format-List
+        $virtualdrives | Format-List
     }
     
     if($faileddrives -ne $null){
         Write-Output "Failed Drive Information"
         if($supported -ne $false) {
-            $faileddrives | Select-object Array,DriveNumber,Port,Bay,Status,Reason,Size,Interface,Serial,Model,Temp,'Smart Status' | format-table * -autosize
+            $faileddrives | Select-object Array,Port,Size,Interface,Serial,Model,Temp,'Smart Status' | format-table * -autosize
         }else{
-            $faileddrives | format-table * -autosize
+            $faileddrives | Select-object Array,Port,Reason,Size,Interface,Serial,Model,Temp,'Smart Status' | format-table * -autosize
         }
         exit $ninjaexitcodefailure
     } else {

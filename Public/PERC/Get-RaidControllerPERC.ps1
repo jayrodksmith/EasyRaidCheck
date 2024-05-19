@@ -19,11 +19,11 @@ function Get-RaidControllerPERC {
         $controllerCountString              = $controllerCountMatch.Matches.Groups[1].Value.Trim()
 
         # Debug output to verify the controller count
-        Write-Host "Controller Count String: $controllerCountString"
+        Write-Verbose "Controller Count String: $controllerCountString"
 
         if ($controllerCountString -match '^\d+$') {
             $controllerCount = [int]$controllerCountString.Trim()
-            Write-Host "Controller Count (Parsed as Int): $controllerCount"
+            Write-Verbose "Controller Count (Parsed as Int): $controllerCount"
         } else {
             throw "Failed to parse the number of controllers"
         }
@@ -32,7 +32,7 @@ function Get-RaidControllerPERC {
             $controller = "/c$i"
             $controllertrimmed = $controller -replace "/c", ""
 
-            Write-Host "Processing Controller: $controller"
+            Write-Verbose "Processing Controller: $controller"
             
             $percCLICommandvirtualdrive             = "$controller /vall show j"
             $percCLICommandvirtualdrivegroup        = "$controller /dall show j"
