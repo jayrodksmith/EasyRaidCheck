@@ -9,6 +9,7 @@
 - HP Array status to table
 - PERC Array Status to table
 - Added drives not part of array into output
+- Rework of LSI/PERC to support multiple controllers
 
 ### Fixed
 
