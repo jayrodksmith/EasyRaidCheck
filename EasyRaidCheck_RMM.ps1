@@ -87,14 +87,14 @@ function Start-EasyRaidCheck{
 
     if ($supportedcontrollers.'Controller Type' -match "LSI"){
         # LSI
-        $raidarraydetails, $AllDrives, $virtualdrives, $FailedDrives, $FailedVirtualDrives, $MissingDrives  = Get-RaidControllerLSI -StorCLILocation $storecli64 -ControllerName ($($supportedcontrollers.'Controller Name') | Select-object -first 1)
+        $raidarraydetails, $AllDrives, $virtualdrives, $FailedDrives, $FailedVirtualDrives, $MissingDrives  = Get-RaidControllerLSI -StorCLILocation $storecli64
 
     } elseif ($supportedcontrollers.'Controller Type' -match "HP"){
         # HP
         $raidarraydetails, $AllDrives, $virtualdrives, $faileddrives                                        = Get-RaidControllerHP -hpCLIlocation $ssacli -hpADUlocation $ssaducli -ControllerName ($($supportedcontrollers.'Controller Name') | Select-object -first 1)
     } elseif ($supportedcontrollers.'Controller Type' -match "PERC"){
         # PERC
-        $raidarraydetails, $AllDrives, $virtualdrives, $faileddrives, $FailedVirtualDrives, $MissingDrives  = Get-RaidControllerPERC -percCLILocation $perccli64 -ControllerName ($($supportedcontrollers.'Controller Name') | Select-object -first 1)
+        $raidarraydetails, $AllDrives, $virtualdrives, $faileddrives, $FailedVirtualDrives, $MissingDrives  = Get-RaidControllerPERC -percCLILocation $perccli64
     } else {
         Write-Output "No Supported Controllers"
         $supported = $false
