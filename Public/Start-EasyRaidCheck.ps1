@@ -140,9 +140,18 @@ function Start-EasyRaidCheck{
         $virtualdrives          | ConvertTo-Json | Out-File -FilePath "C:\ProgramData\EasyRaidCheck\Drives_Virtual.json" -Force
     }
 
+    # Properties to exclude from output
+    $excludeProperties = @(
+        "RowColour"
+        "Rebuild Remaining"
+        "Driver"
+        "Firmware"
+        )
+
     # Output results to screen use Format List if Format Table execeeds Ninja Limits
     if((Test-FormattedTableWidth -Object $raidarraydetails) -eq $false){
-        $raidarraydetails | Format-Table
+        $properties = $raidarraydetails[0].PSObject.Properties.Name | Where-Object { $_ -notin $excludeProperties }
+        $raidarraydetails | Select-Object $properties | Format-Table -AutoSize
     } else{
         $raidarraydetails | Format-List
     }
