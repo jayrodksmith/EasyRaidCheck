@@ -204,13 +204,17 @@ function Start-EasyRaidCheck{
         )
 
     # Output results to screen use Format List if Format Table execeeds Ninja Limits
-    if((Test-FormattedTableWidth -Object $raidarraydetails) -eq $false){
-        $properties = $raidarraydetails[0].PSObject.Properties.Name | Where-Object { $_ -notin $excludeProperties }
-        $raidarraydetails | Select-Object $properties | Format-Table -AutoSize
-    } else{
-        $raidarraydetails | Format-List
-    }
     
+    if ($raidarraydetails){
+        $properties = $raidarraydetails[0].PSObject.Properties.Name | Where-Object { $_ -notin $excludeProperties }
+        $raidarraydetails = $raidarraydetails | Select-Object $properties
+        if((Test-FormattedTableWidth -Object $raidarraydetails) -eq $false){
+            $raidarraydetails | Format-Table -AutoSize
+        } else{
+            $raidarraydetails | Format-List
+        }
+    }
+
     if($supported -ne $false) {
         $Alldrives = $AllDrives | Select-object Array,Port,Size,Interface,Serial,Model,Temp,'Smart Status'
         if((Test-FormattedTableWidth -Object $Alldrives) -eq $false){
