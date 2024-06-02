@@ -167,7 +167,7 @@ function Start-EasyRaidCheck{
         }
     }
     
-    if($null -eq $faileddrives){
+    if($null -ne $faileddrives){
         Write-Output "Failed Drive Information"
         if($supported -ne $false) {
             $faileddrives = $faileddrives | Select-object Array,Port,Size,Interface,Serial,Model,Temp,'Smart Status'
