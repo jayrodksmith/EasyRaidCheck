@@ -140,21 +140,48 @@ function Start-EasyRaidCheck{
         $virtualdrives          | ConvertTo-Json | Out-File -FilePath "C:\ProgramData\EasyRaidCheck\Drives_Virtual.json" -Force
     }
 
-    # Output results to screen
-    $raidarraydetails | Format-List
-    if($supported -ne $false) {
-        $AllDrives | Select-object Array,Port,Size,Interface,Serial,Model,Temp,'Smart Status' | format-table * -autosize
+    # Output results to screen use Format List if Format Table execeeds Ninja Limits
+    if((Test-FormattedTableWidth -Object $raidarraydetails) -eq $false){
+        $raidarraydetails | Format-Table
     } else{
-        $AllDrives | Format-List
-        $virtualdrives | Format-List
+        $raidarraydetails | Format-List
     }
     
-    if($faileddrives -ne $null){
+    if($supported -ne $false) {
+        $Alldrives = $AllDrives | Select-object Array,Port,Size,Interface,Serial,Model,Temp,'Smart Status'
+        if((Test-FormattedTableWidth -Object $Alldrives) -eq $false){
+            $Alldrives | Format-Table
+        } else{
+            $Alldrives | Format-List
+        }
+        if((Test-FormattedTableWidth -Object $virtualdrives) -eq $false){
+            $virtualdrives | Format-Table
+        }else{
+            $virtualdrives | Format-List
+        }
+    } else{
+        if((Test-FormattedTableWidth -Object $Alldrives) -eq $false){
+            $AllDrives | Format-Table
+        } else {
+            $AllDrives | Format-List
+        }
+    }
+    
+    if($null -eq $faileddrives){
         Write-Output "Failed Drive Information"
         if($supported -ne $false) {
-            $faileddrives | Select-object Array,Port,Size,Interface,Serial,Model,Temp,'Smart Status' | format-table * -autosize
+            $faileddrives = $faileddrives | Select-object Array,Port,Size,Interface,Serial,Model,Temp,'Smart Status'
+            if((Test-FormattedTableWidth -Object $faileddrives) -eq $false){
+                $faileddrives | Format-Table
+            } else{
+                $faileddrives | Format-List
+            }
         }else{
-            $faileddrives | Select-object Array,Port,Reason,Size,Interface,Serial,Model,Temp,'Smart Status' | format-table * -autosize
+            if((Test-FormattedTableWidth -Object $faileddrives) -eq $false){
+                $faileddrives | Format-Table
+            } else{
+                $faileddrives | Format-List
+            }
         }
         exit $ninjaexitcodefailure
     } else {
