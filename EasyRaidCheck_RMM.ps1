@@ -1,5 +1,3 @@
-
-
 function Get-RaidControllers{
     [CmdletBinding()]
     param (
@@ -884,7 +882,7 @@ function Get-SMARTInfo {
     }
     
     $smartalldrives = @()
-
+    $smartfaileddrives = @()
     $drive = $null
 
     Get-Content -Path "C:\ProgramData\EasyRaidCheck\Crystaldiskinfo\DiskInfo.txt" | ForEach-Object {
@@ -974,11 +972,12 @@ function Get-RaidControllerPERC {
         [string]$percCLILocation = 'C:\ProgramData\EasyRaidCheck\Dell\perccli64.exe'
     )
 
-    Get-RaidControllerPERCPreReq -PERCCLILocation $percCLILocation
+    Get-RaidControllerPERCPreReq -percLocation $percCLILocation
 
     $alldrives              = New-Object System.Collections.Generic.List[Object]
     $missingdrives          = New-Object System.Collections.Generic.List[Object]
     $failedvirtualdrives    = New-Object System.Collections.Generic.List[Object]
+    $faileddrives           = New-Object System.Collections.Generic.List[Object]
     $raidarraydetails       = New-Object System.Collections.Generic.List[Object]
     $virtualdrivesgroup     = New-Object System.Collections.Generic.List[Object]
     $virtualdrives          = New-Object System.Collections.Generic.List[Object]
@@ -1184,7 +1183,6 @@ function Get-RaidControllerPERC {
         $ScriptError = "percCLI Command has Failed: $($_.Exception.Message)"
         exit
     }
-
     return $raidarraydetails, $alldrives, $virtualdrives, $FailedDrives, $FailedVirtualDrives, $MissingDrives
 }
 
@@ -1323,7 +1321,7 @@ function Write-ResultNinjaRMM {
         [System.Collections.Generic.List[Object]]$resultraidarraydetails     = '',
         [System.Collections.Generic.List[Object]]$resultAllDrives,
         [System.Collections.Generic.List[Object]]$resultAllvirtual,
-        [string]$resultfaileddrives         = ''
+        [System.Collections.Generic.List[Object]]$resultfaileddrives         = ''
     )
     if (-not (Get-Command -Name "Ninja-Property-Set" -ErrorAction SilentlyContinue)) {
         $errorMessage = "Error: NinjaRMM module not found, not writing to NinjaRMM."
