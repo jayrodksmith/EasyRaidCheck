@@ -6,6 +6,8 @@ function Get-RaidControllers{
     )
 
     $controllers = Get-CimInstance -ClassName "Win32_SCSIController"
+    if((Get-WmiObject -Class Win32_bios).Manufacturer -Match "Dell") {
+        $controllers = omreport 
     $found = $false
     
     # Define controller name patterns for different vendors
@@ -39,7 +41,7 @@ function Get-RaidControllers{
         }
     }
     # Find PERC
-    foreach ($controller in $controllers) {
+    <#foreach ($controller in $controllers) {
         foreach ($pattern in $percPattern) {
             if ($controller.Name -like $pattern) {
                 $results += [PSCustomObject]@{
@@ -49,7 +51,8 @@ function Get-RaidControllers{
                 $found = $true
             }
         }
-    }    
+    }#>
+    
     return $results, $controllers
 }
 
@@ -73,6 +76,8 @@ function Start-EasyRaidCheck{
         [string]$ssaducli                   = 'C:\ProgramData\EasyRaidCheck\HP\ssaducli.exe',       # Will download from HP if missing
         # PERC Details
         [string]$perccli64                  = 'C:\ProgramData\EasyRaidCheck\Dell\perccli64.exe',   # Will download from my github if missing
+        # OpenManage Details [more verbose and able to see multiple dell controller types
+        [string]$omreport                   = 'C:\Program Files\Dell\SysMgt\oma\bin\omreport.exe' # Will download from dell and install if missing
         # CrystalDiskInfo Details
         [boolean]$Smartinfo                 = $true ,                                               # This will download CrystalDiskInfo if missing
         $DiskInfo64                         = "C:\ProgramData\EasyRaidCheck\Crystaldiskinfo\DiskInfo64.exe"
@@ -967,12 +972,36 @@ function Get-SMARTPreReq {
         Write-Verbose "CrystalDiskInfo already exists"
     }
 }
+function Get-RaidControllerDell {
+    [CmdletBinding()]
+    param (
+        [string]$omreportLocation = 'C:\Program Files\Dell\SysMgt\oma\bin\omreport.exe'
+    )
+    
+    Get-RaidControllerDellPreReq
 
+    $alldrives              = New-Object System.Collections.Generic.List[Object]
+    $missingdrives          = New-Object System.Collections.Generic.List[Object]
+    $failedvirtualdrives    = New-Object System.Collections.Generic.List[Object]
+    $raidarraydetails       = New-Object System.Collections.Generic.List[Object]
+    $virtualdrivesgroup     = New-Object System.Collections.Generic.List[Object]
+    $virtualdrives          = New-Object System.Collections.Generic.List[Object]
+
+    try {
+        $ExecuteOMReportCommandBasicInfo = & $omreportLocation "storage controller"
+        $controllerCountMatch = $ExecuteOMReportCommandBasicInfo | Select-String -Pattern 'ID                                            :'
+        $controllerCountString = 
+    } catch {
+        $ScriptError = "omreport Command has Failed: $($_.Exception.Message)"
+        exit
+    }
+}
+    
 function Get-RaidControllerPERC {
     [CmdletBinding()]
     param (
         [string]$percCLILocation = 'C:\ProgramData\EasyRaidCheck\Dell\perccli64.exe'
-    )
+perc
 
     Get-RaidControllerPERCPreReq -PERCCLILocation $percCLILocation
 
@@ -1188,6 +1217,44 @@ function Get-RaidControllerPERC {
     return $raidarraydetails, $alldrives, $virtualdrives, $FailedDrives, $FailedVirtualDrives, $MissingDrives
 }
 
+function Get-RaidControllerDellPreReq {
+    $arguments = "/silent"
+    $dlDir = $env:TEMP
+    $dlURL = "https://downloads.dell.com/FOLDER06019899M/1/OM-SrvAdmin-Dell-Web-WINX64-9.4.0-3787_A00.exe"
+    $filename = "OM-SrvAdmin-Dell-Web-WINX64-9.4.0-3787_A00.exe"
+
+    Write-Verbose "Checking if software is installed"
+    if(Test-Path "C:\Program Files\Dell\SysMgt\omsa"){
+        Write-Verbose "OMSA already exists"
+    } else {
+        if( ((Get-WmiObject -Class win32_OperatingSystem).Caption -Match "2019") -or ((Get-WmiObject -Class win32_OperatingSystem).Caption -Match "2022")){
+            $dlURL = "https://downloads.dell.com/FOLDER10653510M/1/OM-SrvAdmin-Dell-Web-WINX64-11.0.1.0-5494_A00.exe"
+        } else {
+            $dlURL = "https://downloads.dell.com/FOLDER06019899M/1/OM-SrvAdmin-Dell-Web-WINX64-9.4.0-3787_A00.exe"
+        }
+        if(Test-Path "$dlDir\$filename"){
+            taskkill /f /im $filename
+            Remove-Item "$dlDir\$filename" -ErrorAction SilentlyContinue
+        }
+        try {
+            New-Item -ItemType Directory "$dlDir" -Force | Out-Null
+            (New-Object System.Net.WebClient).DownloadFile($dlURL, "$dlDir\$filename")
+            Write-Verbose "Software downloaded!" 
+            Write-Verbose "Installing Software"
+            $softwareMSI = "$dlDir\$filename"
+            $args = "/auto"
+            Start-Process -filepath $softwareMSI -argumentList $args -Wait
+            Write-Verbose "Installing from: $softwareMSI"
+            $args = "/i C:\OpenManage\windows\SystemsManagementx64\SysMgmtx64.msi /quiet"
+            Start-Process -filepath msiexec -argumentlist $args -Wait
+            Remove-Item "$dlDir\$filename"-ErrorAction Stop
+            Write-Verbose "Installer deleted successfully"
+        } catch {
+            Write-Verbose "Software failed to download/install"
+            exit 888
+        }
+    }
+}
 
 function Get-RaidControllerPERCPreReq {
     [CmdletBinding()]
