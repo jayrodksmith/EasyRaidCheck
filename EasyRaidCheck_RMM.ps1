@@ -989,6 +989,8 @@ function Get-RaidControllerDell {
 
     try {
         $ExecuteOMReportCommandBasicInfo = & $omreportLocation "storage controller"
+        $controllerCountMatch = $ExecuteOMReportCommandBasicInfo | Select-String -Pattern 'ID                                            :'
+        $controllerCountString = 
     } catch {
         $ScriptError = "omreport Command has Failed: $($_.Exception.Message)"
         exit
@@ -999,7 +1001,7 @@ function Get-RaidControllerPERC {
     [CmdletBinding()]
     param (
         [string]$percCLILocation = 'C:\ProgramData\EasyRaidCheck\Dell\perccli64.exe'
-    )
+perc
 
     Get-RaidControllerPERCPreReq -PERCCLILocation $percCLILocation
 
