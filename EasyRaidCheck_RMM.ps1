@@ -78,6 +78,7 @@ function Start-EasyRaidCheck{
         $DiskInfo64                         = "C:\ProgramData\EasyRaidCheck\Crystaldiskinfo\DiskInfo64.exe"
 
     )
+    Write-Output "EasyRaidCheck Version 1.4.2"
     # Determine if the system is virtual
     $IsVirtual = @(Get-CimInstance -ClassName Win32_ComputerSystem | Where-Object { $_.Model -eq 'VMware Virtual Platform' -or $_.Model -eq 'Virtual Machine' }).Count -gt 0
     if($IsVirtual){
@@ -257,6 +258,164 @@ function Start-EasyRaidCheck{
     }
 }
 
+function Expand-File{
+    [CmdletBinding()]
+    param (
+        $file,
+        $destination
+    )
+    Function Test-CommandExists {
+        Param (
+            $command
+        )
+        $oldPreference = $ErrorActionPreference
+        $ErrorActionPreference = 'stop'
+        try {
+            if(Get-Command $command){
+                return $true
+            }
+        } Catch {
+            Write-Verbose "$command does not exist"
+            return $false
+        } Finally {
+            $ErrorActionPreference=$oldPreference
+        }
+    }
+    if (Test-CommandExists 'Expand-Archive' -eq $True ){
+        $commandexist = $True
+        } else {
+        $commandexist = $False
+        }
+    if($commandexist -eq $True) {
+        Expand-Archive -Path $file -DestinationPath $destination -Force
+    } else {
+        $shell = new-object -com shell.application
+        $zip = $shell.NameSpace($file)
+        foreach($item in $zip.items()){
+            $shell.Namespace($destination).copyhere($item, 0x14)
+        }
+    }
+}
+
+function Test-FormattedTableWidth {
+    # Example
+    # Test-FormattedTableWidth -Object $object -Width 114
+    # Checks if table is larger than 114 characters, which Ninja's Limit is on the console view
+    param (
+        [Parameter(Mandatory = $true)]
+        [psobject]$Object,
+        
+        [int]$Width = 114
+    )
+
+    # Format the object as a table and output it as a string with the specified width
+    $formattedOutput = $Object | Format-Table | Out-String -Width $Width
+
+    # Measure the width of the formatted output
+    $maxWidth = ($formattedOutput -split "`n" | ForEach-Object { $_.Length }) | Measure-Object -Maximum
+    return $maxWidth.Maximum -gt $Width
+}
+
+function Get-SMARTInfo {
+    param(
+        $CDIPath = "C:\ProgramData\EasyRaidCheck\CrystalDiskInfo\DiskInfo64.exe"
+    )
+    
+    $CDIExecutable = $CDIPath
+    Get-SMARTPreReq -crystalLocation $CDIExecutable
+
+    try {
+        Start-Process -FilePath $CDIExecutable -ArgumentList '/CopyExit' -Wait
+    }
+    catch {
+        Write-Error "An error occurred: $_"
+    }
+    
+    $smartalldrives = @()
+    $smartfaileddrives = @()
+    $drive = $null
+
+    Get-Content -Path "C:\ProgramData\EasyRaidCheck\Crystaldiskinfo\DiskInfo.txt" | ForEach-Object {
+        if ($_ -match 'Model : (.*)') {
+            if ($drive) {
+                $smartalldrives += $drive
+            }
+            $drive = New-Object PSObject -Property @{
+                Model = $matches[1]
+            }
+        }
+        elseif ($_ -match 'Firmware : (.*)') {
+            $drive | Add-Member -MemberType NoteProperty -Name "Firmware" -Value $matches[1]
+        }
+        elseif ($_ -match 'Serial Number : (.*)') {
+            $drive | Add-Member -MemberType NoteProperty -Name "Serial Number" -Value $matches[1]
+        }
+        elseif ($_ -match 'Disk Size : (.*)') {
+            $sizevalue = $matches[1] -replace '\s*\(.*\)', ''
+            $drive | Add-Member -MemberType NoteProperty -Name "Disk Size" -Value $sizevalue
+        }
+        elseif ($_ -match 'Interface : (.*)') {
+            $interfacevalue = $matches[1] -replace '\s*\(.*\)', ''
+            $drive | Add-Member -MemberType NoteProperty -Name "Interface" -Value $interfacevalue
+        }
+        elseif ($_ -match 'Health Status : (.*)') {
+            $drive | Add-Member -MemberType NoteProperty -Name "Health Status" -Value $matches[1]
+            if ($drive.'Health Status' -notmatch '\bGood\b' -and $null -ne $drive.'Health Status' -and $drive.'Health Status' -notmatch '\bUnknown\b') {
+                $drive | Add-Member -MemberType NoteProperty -Name "RowColour" -Value 'danger'
+            } else {
+                $drive | Add-Member -MemberType NoteProperty -Name "RowColour" -Value 'success'
+            }
+        }
+        elseif ($_ -match 'Power On Hours : (.*)') {
+            $drive | Add-Member -MemberType NoteProperty -Name "Power On Hours" -Value $matches[1]
+        }
+        elseif ($_ -match 'Temperature : (.*)') {
+            $temperaturevalue = $matches[1] -replace '\s*\(.*\)', ''
+            $drive | Add-Member -MemberType NoteProperty -Name "Temperature" -Value $temperaturevalue
+        }
+        elseif ($_ -match 'Drive Letter : (.*)') {
+            $drive | Add-Member -MemberType NoteProperty -Name "Drive Letter" -Value $matches[1]
+            $smartalldrives += $drive
+            $drive = $null
+        }
+    }
+
+    if ($drive) {
+        $smartalldrives += $drive
+    }
+
+    $smartFailedDrives = $smartalldrives | Where-Object { $_."Health Status" -notlike "*Good*" }
+    return $smartalldrives, $smartFailedDrives
+}
+
+function Get-SMARTPreReq {
+    [CmdletBinding()]
+    param (
+        $crystalurl = "https://ixpeering.dl.sourceforge.net/project/crystaldiskinfo/9.3.0/CrystalDiskInfo9_3_0.zip?viasf=1",
+        $crystaloutput = "$($env:windir)\temp\CrystalDiskInfo.zip",
+        $crystalLocation = "",
+        $crystalextract = "C:\ProgramData\EasyRaidCheck\Crystaldiskinfo"
+    )
+    # Check if the folder exists
+    if (-not (Test-Path -Path $crystalextract)) {
+        # If it doesn't exist, create it
+        $newfolder = New-Item -Path $crystalextract -ItemType Directory -erroraction SilentlyContinue | Out-null
+    } 
+    if (-not(Test-Path -Path $crystalLocation -PathType Leaf)) {
+        [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12
+        try {
+            Write-Verbose "Extracting CrystalDiskInfo"
+            Invoke-WebRequest -Uri $crystalurl -OutFile $crystaloutput
+            Expand-File -File $crystaloutput -Destination $crystalextract
+        }catch{
+            Write-Error "An error occurred: $_"
+            exit 888
+        }
+    }else{
+        Write-Verbose "CrystalDiskInfo already exists"
+    }
+}
+
 function Get-RaidControllerLSI {
     [CmdletBinding()]
     param (
@@ -268,6 +427,7 @@ function Get-RaidControllerLSI {
     $alldrives              = New-Object System.Collections.Generic.List[Object]
     $missingdrives          = New-Object System.Collections.Generic.List[Object]
     $failedvirtualdrives    = New-Object System.Collections.Generic.List[Object]
+    $faileddrives           = New-Object System.Collections.Generic.List[Object]
     $raidarraydetails       = New-Object System.Collections.Generic.List[Object]
     $virtualdrivesgroup     = New-Object System.Collections.Generic.List[Object]
     $virtualdrives          = New-Object System.Collections.Generic.List[Object]
@@ -506,6 +666,254 @@ function Get-RaidControllerLSIPreReq {
         }
     }else{
         Write-Verbose "LSI Tools already exists"
+    }
+}
+
+function Get-RaidControllerPERC {
+    [CmdletBinding()]
+    param (
+        [string]$percCLILocation = 'C:\ProgramData\EasyRaidCheck\Dell\perccli64.exe'
+    )
+
+    Get-RaidControllerPERCPreReq -percLocation $percCLILocation
+
+    $alldrives              = New-Object System.Collections.Generic.List[Object]
+    $missingdrives          = New-Object System.Collections.Generic.List[Object]
+    $failedvirtualdrives    = New-Object System.Collections.Generic.List[Object]
+    $faileddrives           = New-Object System.Collections.Generic.List[Object]
+    $raidarraydetails       = New-Object System.Collections.Generic.List[Object]
+    $virtualdrivesgroup     = New-Object System.Collections.Generic.List[Object]
+    $virtualdrives          = New-Object System.Collections.Generic.List[Object]
+
+    try {
+        $ExecutepercCLICommandbasicinfo     = & $percCLILocation "show all"
+        $controllerCountMatch               = $ExecutepercCLICommandbasicinfo | Select-String -Pattern "Number of Controllers\s*=\s*(\d+)"
+        $controllerCountString              = $controllerCountMatch.Matches.Groups[1].Value.Trim()
+
+        # Debug output to verify the controller count
+        Write-Verbose "Controller Count String: $controllerCountString"
+
+        if ($controllerCountString -match '^\d+$') {
+            $controllerCount = [int]$controllerCountString.Trim()
+            Write-Verbose "Controller Count (Parsed as Int): $controllerCount"
+        } else {
+            throw "Failed to parse the number of controllers"
+        }
+
+        for ($i = 0; $i -lt $controllerCount; $i++) {
+            $controller = "/c$i"
+            $controllertrimmed = $controller -replace "/c", ""
+
+            Write-Verbose "Processing Controller: $controller"
+            
+            $percCLICommandvirtualdrive             = "$controller /vall show j"
+            $percCLICommandvirtualdrivegroup        = "$controller /dall show j"
+            $percCLICommandphysical                 = "$controller /eall /sall show j"
+            $percCLICommandphysicalall              = "$controller /eall /sall show all"
+            $percCLICommandbasicinfo2               = "$controller show"
+            $percCLICommandrebuildprogress          = "$controller /eall /sall show rebuild"
+
+            $ExecutepercCLIvirtualdrive             = & $percCLILocation $percCLICommandvirtualdrive | out-string
+            $ArraypercCLIvirtualdrive               = ConvertFrom-Json $ExecutepercCLIvirtualdrive
+            $ExecutepercCLIvirtualdrivegroup        = & $percCLILocation $percCLICommandvirtualdrivegroup | out-string
+            $ArraypercCLIvirtualdrivegroup          = ConvertFrom-Json $ExecutepercCLIvirtualdrivegroup
+            $ExecutepercCLICommandbasicinfo2        = & $percCLILocation $percCLICommandbasicinfo2
+            $ExecutepercCLICommandrebuildprogress   = & $percCLILocation $percCLICommandrebuildprogress
+
+            $PERCcontrollermodel                     = $ExecutepercCLICommandbasicinfo2 | Select-String -Pattern "Product Name\s*=\s*(.*)" | ForEach-Object { $_.Matches.Groups[1].Value.Trim() }
+            $PERCcontrollerserial                    = $ExecutepercCLICommandbasicinfo2 | Select-String -Pattern "Serial Number\s*=\s*(.*)" | ForEach-Object { $_.Matches.Groups[1].Value.Trim() }
+            $PERCcontrollerfirmware                  = $ExecutepercCLICommandbasicinfo2 | Select-String -Pattern "FW Version\s*=\s*(.*)" | ForEach-Object { $_.Matches.Groups[1].Value.Trim() }
+            $PERCcontrollerdriver                    = $ExecutepercCLICommandbasicinfo2 | Select-String -Pattern "Driver Version\s*=\s*(.*)" | ForEach-Object { $_.Matches.Groups[1].Value.Trim() }
+
+            # Get Virtual Drive Status + Physical
+            foreach ($VirtualDrivegroup in $ArraypercCLIvirtualdrivegroup.Controllers.'response data'.'response data'.'TOPOLOGY') {
+                $RowColour = switch ($($VirtualDrivegroup.State)) {
+                    { $_ -eq 'Onln' } { "success"; break }
+                    { $_ -eq 'Optl' } { "success"; break }
+                    default { "danger" }
+                }
+                $virtualdrivesgroup.Add([PSCustomObject]@{
+                    DriveGroup      = $($VirtualDrivegroup.'DG')
+                    Array           = $($VirtualDrivegroup.'Arr')
+                    Row             = $($VirtualDrivegroup.'Row')
+                    'EID:Slot'      = $($VirtualDrivegroup.'EID:Slot')
+                    DID             = $($VirtualDrivegroup.'DID')
+                    Type            = $($VirtualDrivegroup.'Type')
+                    Status          = $($VirtualDrivegroup.'State')
+                    Size            = $($VirtualDrivegroup.'Size')
+                    RowColour       = $RowColour
+                })
+            }
+
+            # Get Virtual Drive Status
+            foreach ($VirtualDrive in $ArraypercCLIvirtualdrive.Controllers.'response data'.'Virtual Drives') {
+                $RowColour = switch ($($VirtualDrive.State)) {
+                    { $_ -eq 'Optl' } { "success"; break }
+                    default { "danger" }
+                }
+                if ($($VirtualDrive.'Cache') -eq 'RWBD') {
+                    $ReadAhead = $true
+                    $WriteBack = $true
+                }
+                if ($($VirtualDrive.'Cache') -eq 'RAWBD') {
+                    $ReadAhead = $true
+                    $WriteBack = $true
+                }
+                if ($($VirtualDrive.'Cache') -eq 'NRWTD') {
+                    $ReadAhead = $false
+                    $WriteBack = $false
+                }
+                if ($($VirtualDrive.'Cache') -eq 'RWTD') {
+                    $ReadAhead = $true
+                    $WriteBack = $true
+                }
+                if ($($VirtualDrive.'Cache') -eq 'NRWBD') {
+                    $ReadAhead = $false
+                    $WriteBack = $true
+                }
+                if ($($VirtualDrive.'Cache') -eq 'NRAWBD') {
+                    $ReadAhead = $false
+                    $WriteBack = $true
+                }
+                $virtualdrives.Add([PSCustomObject]@{
+                    Controller      = $controllertrimmed
+                    Array           = $($VirtualDrive.'DG/VD')
+                    Type            = $($VirtualDrive.'TYPE')
+                    Status          = $($VirtualDrive.'State')
+                    Access          = $($VirtualDrive.'Access')
+                    Cache           = $($VirtualDrive.'Cache')
+                    ReadAhead       = $ReadAhead
+                    WriteBack       = $WriteBack
+                    Size            = $($VirtualDrive.'Size')
+                    Name            = $($VirtualDrive.'Name')
+                    RowColour       = $RowColour
+                })
+            }
+
+            $ExecutepercCLIphysical     = & $percCLILocation $percCLICommandphysical | out-string
+            $ArraypercCLIphysical       = ConvertFrom-Json $ExecutepercCLIphysical
+            $ExecutepercCLIphysicalall  = & $percCLILocation $percCLICommandphysicalall | out-string
+            $driveEntries               = $ExecutepercCLIphysicalall -split [System.Environment]::NewLine
+            $driveObjects = @()
+
+            foreach ($line in $driveEntries) {
+                if ($line -match "^Drive /c$i/e(\d+)/s(\d+)") {
+                    $driveIdentifier = "$($Matches[1]):$($Matches[2])"
+                }
+                elseif ($line -match "^SN =") {
+                    $serialNumber = $line -replace "SN = ", ""
+                    $serialNumber = $serialNumber -replace "\s", ""
+
+                    $driveObject = [PSCustomObject]@{
+                        DriveIdentifier = $driveIdentifier
+                        SerialNumber = $serialNumber
+                    }
+                    $driveObjects += $driveObject
+                }
+            }
+
+            foreach ($physicaldrive in $ArraypercCLIphysical.Controllers.'Response data'.'Drive Information') {
+                $RowColour = switch ($($physicaldrive.State)) {
+                    { $_ -eq 'Onln' } { "success"; break }
+                    { $_ -eq 'GHS' } { "success"; break }
+                    { $_ -eq 'JBOD' } { "success"; break }
+                    { $_ -eq 'DHS' } { "success"; break }
+                    { $_ -eq 'UGood' } { "success"; break }
+                    default { "danger" }
+                }
+
+                $alldrives.Add([PSCustomObject]@{
+                    Controller          = $controllertrimmed
+                    Array               = $($physicaldrive.DG)
+                    DriveNumber         = $($physicaldrive.DID)
+                    Port                = $($physicaldrive.'EID:Slt')
+                    Bay                 = $null
+                    Status              = $($physicaldrive.State)
+                    Reason              = $null
+                    Size                = $($physicaldrive.Size)
+                    Interface           = $($physicaldrive.Intf) + " " + $($physicaldrive.Med)
+                    Serial              = ($driveObjects | Where-Object -Property DriveIdentifier -eq $($physicaldrive.'EID:Slt')).SerialNumber
+                    Model               = $($physicaldrive.Model)
+                    'Temp'              = $null
+                    'Max Temp'          = $null
+                    'Smart Status'      = $null
+                    'Power On Hours'    = $null
+                    'DriveLetter'       = $null
+                    RowColour           = $RowColour
+                })
+            }
+
+            $FailedVirtualDrives        = $virtualdrives | Where-Object { $_.Status -ne "Optl" }
+            $FailedDrives               = $alldrives | Where-Object { $_.Status -ne "Onln" -and $_.Status -ne "GHS" -and $_.Status -ne "JBOD" -and $_.Status -ne "DHS" -and $_.Status -ne "UGood" }
+            $MissingDrives              = $virtualdrivesgroup | Where-Object { $_.Status -eq "Msng" }
+
+            if ($FailedDrives -or $MissingDrives) {
+                $RAIDphysicalstatus = "Not Healthy"
+            } else {
+                $RAIDphysicalstatus = "Healthy"
+            }
+
+            if ($FailedVirtualDrives) {
+                $RAIDStatus = "Not Healthy"
+            } else {
+                $RAIDStatus = "Healthy"
+            }
+
+            $lines = $ExecutepercCLICommandrebuildprogress -split "\r?\n"
+            $lines | Where-Object { $_ -notmatch "Not in progress" } | ForEach-Object {
+                if ($_ -match "(\d+)\s+In progress\s+(.+)$") {
+                    $rebuildpercentage = $matches[1] + " %"
+                    $estimatedTimeLeft = $matches[2]
+                }
+            }
+
+            $raidarraydetails.Add([PSCustomObject]@{
+                Controller          = $controllertrimmed
+                Model               = $PERCcontrollermodel
+                Serial              = $PERCcontrollerserial
+                Firmware            = $PERCcontrollerfirmware
+                Driver              = $PERCcontrollerdriver
+                'Rebuild Status'    = if ($rebuildpercentage) { $rebuildpercentage } else { "Not Rebuilding" }
+                'Rebuild Remaining' = if ($estimatedTimeLeft) { $estimatedTimeLeft } else { "Not Rebuilding" }
+                ReadAhead           = $virtualdrives.ReadAhead | Select-Object -First 1
+                WriteBack           = $virtualdrives.WriteBack | Select-Object -First 1
+                VirtualStatus       = $RAIDStatus
+                PhysicalStatus      = $RAIDphysicalstatus
+                RowColour           = if (($RAIDStatus -eq 'Not Healthy') -or ($RAIDphysicalstatus -eq 'Not Healthy')) { "danger" } elseif ($rebuildpercentage) { 'warning' } else { "success" }
+            })
+        }
+    } catch {
+        $ScriptError = "percCLI Command has Failed: $($_.Exception.Message)"
+        exit
+    }
+
+    return $raidarraydetails, $alldrives, $virtualdrives, $FailedDrives, $FailedVirtualDrives, $MissingDrives
+}
+
+
+function Get-RaidControllerPERCPreReq {
+    [CmdletBinding()]
+    param (
+        $percurl = "https://raw.githubusercontent.com/jayrodksmith/EasyRaidCheck/main/Public/PERC/perccli64.exe", # URL for StorCLI
+        $percLocation = "",
+        $percfolder = "C:\ProgramData\EasyRaidCheck\Dell"
+    )
+    # Check if the folder exists
+    if (-not (Test-Path -Path $percfolder)) {
+        # If it doesn't exist, create it
+        $newfolder = New-Item -Path $percfolder -ItemType Directory -erroraction SilentlyContinue | Out-null
+    } 
+    if (-not(Test-Path -Path $percLocation -PathType Leaf)) {
+        [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12
+        try {
+            Write-Verbose "PERC Tools downloading and extracting"
+            Invoke-WebRequest -Uri $percurl -OutFile $percLocation
+        }catch{
+            Write-Error "An error occurred: $_"
+            exit 888
+        }
+    }else{
+        Write-Verbose "PERC Tools already exists"
     }
 }
 
@@ -810,411 +1218,6 @@ function Get-RaidControllerHPPreReq {
     }
 }
 
-function Expand-File{
-    [CmdletBinding()]
-    param (
-        $file,
-        $destination
-    )
-    Function Test-CommandExists {
-        Param (
-            $command
-        )
-        $oldPreference = $ErrorActionPreference
-        $ErrorActionPreference = 'stop'
-        try {
-            if(Get-Command $command){
-                return $true
-            }
-        } Catch {
-            Write-Verbose "$command does not exist"
-            return $false
-        } Finally {
-            $ErrorActionPreference=$oldPreference
-        }
-    }
-    if (Test-CommandExists 'Expand-Archive' -eq $True ){
-        $commandexist = $True
-        } else {
-        $commandexist = $False
-        }
-    if($commandexist -eq $True) {
-        Expand-Archive -Path $file -DestinationPath $destination -Force
-    } else {
-        $shell = new-object -com shell.application
-        $zip = $shell.NameSpace($file)
-        foreach($item in $zip.items()){
-            $shell.Namespace($destination).copyhere($item, 0x14)
-        }
-    }
-}
-
-function Test-FormattedTableWidth {
-    # Example
-    # Test-FormattedTableWidth -Object $object -Width 114
-    # Checks if table is larger than 114 characters, which Ninja's Limit is on the console view
-    param (
-        [Parameter(Mandatory = $true)]
-        [psobject]$Object,
-        
-        [int]$Width = 114
-    )
-
-    # Format the object as a table and output it as a string with the specified width
-    $formattedOutput = $Object | Format-Table | Out-String -Width $Width
-
-    # Measure the width of the formatted output
-    $maxWidth = ($formattedOutput -split "`n" | ForEach-Object { $_.Length }) | Measure-Object -Maximum
-    return $maxWidth.Maximum -gt $Width
-}
-
-function Get-SMARTInfo {
-    param(
-        $CDIPath = "C:\ProgramData\EasyRaidCheck\CrystalDiskInfo\DiskInfo64.exe"
-    )
-    
-    $CDIExecutable = $CDIPath
-    Get-SMARTPreReq -crystalLocation $CDIExecutable
-
-    try {
-        Start-Process -FilePath $CDIExecutable -ArgumentList '/CopyExit' -Wait
-    }
-    catch {
-        Write-Error "An error occurred: $_"
-    }
-    
-    $smartalldrives = @()
-
-    $drive = $null
-
-    Get-Content -Path "C:\ProgramData\EasyRaidCheck\Crystaldiskinfo\DiskInfo.txt" | ForEach-Object {
-        if ($_ -match 'Model : (.*)') {
-            if ($drive) {
-                $smartalldrives += $drive
-            }
-            $drive = New-Object PSObject -Property @{
-                Model = $matches[1]
-            }
-        }
-        elseif ($_ -match 'Firmware : (.*)') {
-            $drive | Add-Member -MemberType NoteProperty -Name "Firmware" -Value $matches[1]
-        }
-        elseif ($_ -match 'Serial Number : (.*)') {
-            $drive | Add-Member -MemberType NoteProperty -Name "Serial Number" -Value $matches[1]
-        }
-        elseif ($_ -match 'Disk Size : (.*)') {
-            $sizevalue = $matches[1] -replace '\s*\(.*\)', ''
-            $drive | Add-Member -MemberType NoteProperty -Name "Disk Size" -Value $sizevalue
-        }
-        elseif ($_ -match 'Interface : (.*)') {
-            $interfacevalue = $matches[1] -replace '\s*\(.*\)', ''
-            $drive | Add-Member -MemberType NoteProperty -Name "Interface" -Value $interfacevalue
-        }
-        elseif ($_ -match 'Health Status : (.*)') {
-            $drive | Add-Member -MemberType NoteProperty -Name "Health Status" -Value $matches[1]
-            if ($drive.'Health Status' -notmatch '\bGood\b' -and $null -ne $drive.'Health Status' -and $drive.'Health Status' -notmatch '\bUnknown\b') {
-                $drive | Add-Member -MemberType NoteProperty -Name "RowColour" -Value 'danger'
-            } else {
-                $drive | Add-Member -MemberType NoteProperty -Name "RowColour" -Value 'success'
-            }
-        }
-        elseif ($_ -match 'Power On Hours : (.*)') {
-            $drive | Add-Member -MemberType NoteProperty -Name "Power On Hours" -Value $matches[1]
-        }
-        elseif ($_ -match 'Temperature : (.*)') {
-            $temperaturevalue = $matches[1] -replace '\s*\(.*\)', ''
-            $drive | Add-Member -MemberType NoteProperty -Name "Temperature" -Value $temperaturevalue
-        }
-        elseif ($_ -match 'Drive Letter : (.*)') {
-            $drive | Add-Member -MemberType NoteProperty -Name "Drive Letter" -Value $matches[1]
-            $smartalldrives += $drive
-            $drive = $null
-        }
-    }
-
-    if ($drive) {
-        $smartalldrives += $drive
-    }
-
-    $smartFailedDrives = $smartalldrives | Where-Object { $_."Health Status" -notlike "*Good*" }
-    return $smartalldrives, $smartFailedDrives
-}
-
-function Get-SMARTPreReq {
-    [CmdletBinding()]
-    param (
-        $crystalurl = "https://ixpeering.dl.sourceforge.net/project/crystaldiskinfo/9.3.0/CrystalDiskInfo9_3_0.zip?viasf=1",
-        $crystaloutput = "$($env:windir)\temp\CrystalDiskInfo.zip",
-        $crystalLocation = "",
-        $crystalextract = "C:\ProgramData\EasyRaidCheck\Crystaldiskinfo"
-    )
-    # Check if the folder exists
-    if (-not (Test-Path -Path $crystalextract)) {
-        # If it doesn't exist, create it
-        $newfolder = New-Item -Path $crystalextract -ItemType Directory -erroraction SilentlyContinue | Out-null
-    } 
-    if (-not(Test-Path -Path $crystalLocation -PathType Leaf)) {
-        [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12
-        try {
-            Write-Verbose "Extracting CrystalDiskInfo"
-            Invoke-WebRequest -Uri $crystalurl -OutFile $crystaloutput
-            Expand-File -File $crystaloutput -Destination $crystalextract
-        }catch{
-            Write-Error "An error occurred: $_"
-            exit 888
-        }
-    }else{
-        Write-Verbose "CrystalDiskInfo already exists"
-    }
-}
-
-function Get-RaidControllerPERC {
-    [CmdletBinding()]
-    param (
-        [string]$percCLILocation = 'C:\ProgramData\EasyRaidCheck\Dell\perccli64.exe'
-    )
-
-    Get-RaidControllerPERCPreReq -PERCCLILocation $percCLILocation
-
-    $alldrives              = New-Object System.Collections.Generic.List[Object]
-    $missingdrives          = New-Object System.Collections.Generic.List[Object]
-    $failedvirtualdrives    = New-Object System.Collections.Generic.List[Object]
-    $raidarraydetails       = New-Object System.Collections.Generic.List[Object]
-    $virtualdrivesgroup     = New-Object System.Collections.Generic.List[Object]
-    $virtualdrives          = New-Object System.Collections.Generic.List[Object]
-
-    try {
-        $ExecutepercCLICommandbasicinfo     = & $percCLILocation "show all"
-        $controllerCountMatch               = $ExecutepercCLICommandbasicinfo | Select-String -Pattern "Number of Controllers\s*=\s*(\d+)"
-        $controllerCountString              = $controllerCountMatch.Matches.Groups[1].Value.Trim()
-
-        # Debug output to verify the controller count
-        Write-Verbose "Controller Count String: $controllerCountString"
-
-        if ($controllerCountString -match '^\d+$') {
-            $controllerCount = [int]$controllerCountString.Trim()
-            Write-Verbose "Controller Count (Parsed as Int): $controllerCount"
-        } else {
-            throw "Failed to parse the number of controllers"
-        }
-
-        for ($i = 0; $i -lt $controllerCount; $i++) {
-            $controller = "/c$i"
-            $controllertrimmed = $controller -replace "/c", ""
-
-            Write-Verbose "Processing Controller: $controller"
-            
-            $percCLICommandvirtualdrive             = "$controller /vall show j"
-            $percCLICommandvirtualdrivegroup        = "$controller /dall show j"
-            $percCLICommandphysical                 = "$controller /eall /sall show j"
-            $percCLICommandphysicalall              = "$controller /eall /sall show all"
-            $percCLICommandbasicinfo2               = "$controller show"
-            $percCLICommandrebuildprogress          = "$controller /eall /sall show rebuild"
-
-            $ExecutepercCLIvirtualdrive             = & $percCLILocation $percCLICommandvirtualdrive | out-string
-            $ArraypercCLIvirtualdrive               = ConvertFrom-Json $ExecutepercCLIvirtualdrive
-            $ExecutepercCLIvirtualdrivegroup        = & $percCLILocation $percCLICommandvirtualdrivegroup | out-string
-            $ArraypercCLIvirtualdrivegroup          = ConvertFrom-Json $ExecutepercCLIvirtualdrivegroup
-            $ExecutepercCLICommandbasicinfo2        = & $percCLILocation $percCLICommandbasicinfo2
-            $ExecutepercCLICommandrebuildprogress   = & $percCLILocation $percCLICommandrebuildprogress
-
-            $PERCcontrollermodel                     = $ExecutepercCLICommandbasicinfo2 | Select-String -Pattern "Product Name\s*=\s*(.*)" | ForEach-Object { $_.Matches.Groups[1].Value.Trim() }
-            $PERCcontrollerserial                    = $ExecutepercCLICommandbasicinfo2 | Select-String -Pattern "Serial Number\s*=\s*(.*)" | ForEach-Object { $_.Matches.Groups[1].Value.Trim() }
-            $PERCcontrollerfirmware                  = $ExecutepercCLICommandbasicinfo2 | Select-String -Pattern "FW Version\s*=\s*(.*)" | ForEach-Object { $_.Matches.Groups[1].Value.Trim() }
-            $PERCcontrollerdriver                    = $ExecutepercCLICommandbasicinfo2 | Select-String -Pattern "Driver Version\s*=\s*(.*)" | ForEach-Object { $_.Matches.Groups[1].Value.Trim() }
-
-            # Get Virtual Drive Status + Physical
-            foreach ($VirtualDrivegroup in $ArraypercCLIvirtualdrivegroup.Controllers.'response data'.'response data'.'TOPOLOGY') {
-                $RowColour = switch ($($VirtualDrivegroup.State)) {
-                    { $_ -eq 'Onln' } { "success"; break }
-                    { $_ -eq 'Optl' } { "success"; break }
-                    default { "danger" }
-                }
-                $virtualdrivesgroup.Add([PSCustomObject]@{
-                    DriveGroup      = $($VirtualDrivegroup.'DG')
-                    Array           = $($VirtualDrivegroup.'Arr')
-                    Row             = $($VirtualDrivegroup.'Row')
-                    'EID:Slot'      = $($VirtualDrivegroup.'EID:Slot')
-                    DID             = $($VirtualDrivegroup.'DID')
-                    Type            = $($VirtualDrivegroup.'Type')
-                    Status          = $($VirtualDrivegroup.'State')
-                    Size            = $($VirtualDrivegroup.'Size')
-                    RowColour       = $RowColour
-                })
-            }
-
-            # Get Virtual Drive Status
-            foreach ($VirtualDrive in $ArraypercCLIvirtualdrive.Controllers.'response data'.'Virtual Drives') {
-                $RowColour = switch ($($VirtualDrive.State)) {
-                    { $_ -eq 'Optl' } { "success"; break }
-                    default { "danger" }
-                }
-                if ($($VirtualDrive.'Cache') -eq 'RWBD') {
-                    $ReadAhead = $true
-                    $WriteBack = $true
-                }
-                if ($($VirtualDrive.'Cache') -eq 'RAWBD') {
-                    $ReadAhead = $true
-                    $WriteBack = $true
-                }
-                if ($($VirtualDrive.'Cache') -eq 'NRWTD') {
-                    $ReadAhead = $false
-                    $WriteBack = $false
-                }
-                if ($($VirtualDrive.'Cache') -eq 'RWTD') {
-                    $ReadAhead = $true
-                    $WriteBack = $true
-                }
-                if ($($VirtualDrive.'Cache') -eq 'NRWBD') {
-                    $ReadAhead = $false
-                    $WriteBack = $true
-                }
-                if ($($VirtualDrive.'Cache') -eq 'NRAWBD') {
-                    $ReadAhead = $false
-                    $WriteBack = $true
-                }
-                $virtualdrives.Add([PSCustomObject]@{
-                    Controller      = $controllertrimmed
-                    Array           = $($VirtualDrive.'DG/VD')
-                    Type            = $($VirtualDrive.'TYPE')
-                    Status          = $($VirtualDrive.'State')
-                    Access          = $($VirtualDrive.'Access')
-                    Cache           = $($VirtualDrive.'Cache')
-                    ReadAhead       = $ReadAhead
-                    WriteBack       = $WriteBack
-                    Size            = $($VirtualDrive.'Size')
-                    Name            = $($VirtualDrive.'Name')
-                    RowColour       = $RowColour
-                })
-            }
-
-            $ExecutepercCLIphysical     = & $percCLILocation $percCLICommandphysical | out-string
-            $ArraypercCLIphysical       = ConvertFrom-Json $ExecutepercCLIphysical
-            $ExecutepercCLIphysicalall  = & $percCLILocation $percCLICommandphysicalall | out-string
-            $driveEntries               = $ExecutepercCLIphysicalall -split [System.Environment]::NewLine
-            $driveObjects = @()
-
-            foreach ($line in $driveEntries) {
-                if ($line -match "^Drive /c$i/e(\d+)/s(\d+)") {
-                    $driveIdentifier = "$($Matches[1]):$($Matches[2])"
-                }
-                elseif ($line -match "^SN =") {
-                    $serialNumber = $line -replace "SN = ", ""
-                    $serialNumber = $serialNumber -replace "\s", ""
-
-                    $driveObject = [PSCustomObject]@{
-                        DriveIdentifier = $driveIdentifier
-                        SerialNumber = $serialNumber
-                    }
-                    $driveObjects += $driveObject
-                }
-            }
-
-            foreach ($physicaldrive in $ArraypercCLIphysical.Controllers.'Response data'.'Drive Information') {
-                $RowColour = switch ($($physicaldrive.State)) {
-                    { $_ -eq 'Onln' } { "success"; break }
-                    { $_ -eq 'GHS' } { "success"; break }
-                    { $_ -eq 'JBOD' } { "success"; break }
-                    { $_ -eq 'DHS' } { "success"; break }
-                    { $_ -eq 'UGood' } { "success"; break }
-                    default { "danger" }
-                }
-
-                $alldrives.Add([PSCustomObject]@{
-                    Controller          = $controllertrimmed
-                    Array               = $($physicaldrive.DG)
-                    DriveNumber         = $($physicaldrive.DID)
-                    Port                = $($physicaldrive.'EID:Slt')
-                    Bay                 = $null
-                    Status              = $($physicaldrive.State)
-                    Reason              = $null
-                    Size                = $($physicaldrive.Size)
-                    Interface           = $($physicaldrive.Intf) + " " + $($physicaldrive.Med)
-                    Serial              = ($driveObjects | Where-Object -Property DriveIdentifier -eq $($physicaldrive.'EID:Slt')).SerialNumber
-                    Model               = $($physicaldrive.Model)
-                    'Temp'              = $null
-                    'Max Temp'          = $null
-                    'Smart Status'      = $null
-                    'Power On Hours'    = $null
-                    'DriveLetter'       = $null
-                    RowColour           = $RowColour
-                })
-            }
-
-            $FailedVirtualDrives        = $virtualdrives | Where-Object { $_.Status -ne "Optl" }
-            $FailedDrives               = $alldrives | Where-Object { $_.Status -ne "Onln" -and $_.Status -ne "GHS" -and $_.Status -ne "JBOD" -and $_.Status -ne "DHS" -and $_.Status -ne "UGood" }
-            $MissingDrives              = $virtualdrivesgroup | Where-Object { $_.Status -eq "Msng" }
-
-            if ($FailedDrives -or $MissingDrives) {
-                $RAIDphysicalstatus = "Not Healthy"
-            } else {
-                $RAIDphysicalstatus = "Healthy"
-            }
-
-            if ($FailedVirtualDrives) {
-                $RAIDStatus = "Not Healthy"
-            } else {
-                $RAIDStatus = "Healthy"
-            }
-
-            $lines = $ExecutepercCLICommandrebuildprogress -split "\r?\n"
-            $lines | Where-Object { $_ -notmatch "Not in progress" } | ForEach-Object {
-                if ($_ -match "(\d+)\s+In progress\s+(.+)$") {
-                    $rebuildpercentage = $matches[1] + " %"
-                    $estimatedTimeLeft = $matches[2]
-                }
-            }
-
-            $raidarraydetails.Add([PSCustomObject]@{
-                Controller          = $controllertrimmed
-                Model               = $PERCcontrollermodel
-                Serial              = $PERCcontrollerserial
-                Firmware            = $PERCcontrollerfirmware
-                Driver              = $PERCcontrollerdriver
-                'Rebuild Status'    = if ($rebuildpercentage) { $rebuildpercentage } else { "Not Rebuilding" }
-                'Rebuild Remaining' = if ($estimatedTimeLeft) { $estimatedTimeLeft } else { "Not Rebuilding" }
-                ReadAhead           = $virtualdrives.ReadAhead | Select-Object -First 1
-                WriteBack           = $virtualdrives.WriteBack | Select-Object -First 1
-                VirtualStatus       = $RAIDStatus
-                PhysicalStatus      = $RAIDphysicalstatus
-                RowColour           = if (($RAIDStatus -eq 'Not Healthy') -or ($RAIDphysicalstatus -eq 'Not Healthy')) { "danger" } elseif ($rebuildpercentage) { 'warning' } else { "success" }
-            })
-        }
-    } catch {
-        $ScriptError = "percCLI Command has Failed: $($_.Exception.Message)"
-        exit
-    }
-
-    return $raidarraydetails, $alldrives, $virtualdrives, $FailedDrives, $FailedVirtualDrives, $MissingDrives
-}
-
-
-function Get-RaidControllerPERCPreReq {
-    [CmdletBinding()]
-    param (
-        $percurl = "https://raw.githubusercontent.com/jayrodksmith/EasyRaidCheck/main/Public/PERC/perccli64.exe", # URL for StorCLI
-        $percLocation = "",
-        $percfolder = "C:\ProgramData\EasyRaidCheck\Dell"
-    )
-    # Check if the folder exists
-    if (-not (Test-Path -Path $percfolder)) {
-        # If it doesn't exist, create it
-        $newfolder = New-Item -Path $percfolder -ItemType Directory -erroraction SilentlyContinue | Out-null
-    } 
-    if (-not(Test-Path -Path $percLocation -PathType Leaf)) {
-        [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12
-        try {
-            Write-Verbose "PERC Tools downloading and extracting"
-            Invoke-WebRequest -Uri $percurl -OutFile $percLocation
-        }catch{
-            Write-Error "An error occurred: $_"
-            exit 888
-        }
-    }else{
-        Write-Verbose "PERC Tools already exists"
-    }
-}
-
 function ConvertTo-ObjectToHtmlTable {
     param (
         [Parameter(Mandatory=$true)]
@@ -1323,7 +1326,7 @@ function Write-ResultNinjaRMM {
         [System.Collections.Generic.List[Object]]$resultraidarraydetails     = '',
         [System.Collections.Generic.List[Object]]$resultAllDrives,
         [System.Collections.Generic.List[Object]]$resultAllvirtual,
-        [string]$resultfaileddrives         = ''
+        [System.Collections.Generic.List[Object]]$resultfaileddrives = ''
     )
     if (-not (Get-Command -Name "Ninja-Property-Set" -ErrorAction SilentlyContinue)) {
         $errorMessage = "Error: NinjaRMM module not found, not writing to NinjaRMM."
