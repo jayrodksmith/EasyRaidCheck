@@ -17,13 +17,15 @@ function Start-EasyRaidCheck{
         [string]$ssacli                     = 'C:\ProgramData\EasyRaidCheck\HP\ssacli.exe',         # Will download from HP if missing
         [string]$ssaducli                   = 'C:\ProgramData\EasyRaidCheck\HP\ssaducli.exe',       # Will download from HP if missing
         # PERC Details
-        [string]$perccli64                  = 'C:\ProgramData\EasyRaidCheck\Dell\perccli64.exe',   # Will download from my github if missing
+        [string]$perccli64                  = 'C:\ProgramData\EasyRaidCheck\Dell\perccli64.exe',    # Will download from my github if missing
+        # VROC Details
+        [string]$vroccli                    = 'C:\ProgramData\EasyRaidCheck\VROC\IntelVROCCli.exe',   # Will download from my github if missing
         # CrystalDiskInfo Details
         [boolean]$Smartinfo                 = $true ,                                               # This will download CrystalDiskInfo if missing
         $DiskInfo64                         = "C:\ProgramData\EasyRaidCheck\Crystaldiskinfo\DiskInfo64.exe"
 
     )
-    Write-Output "EasyRaidCheck Version 1.4.2"
+    Write-Output "EasyRaidCheck Version 1.5.0"
     # Determine if the system is virtual
     $IsVirtual = @(Get-CimInstance -ClassName Win32_ComputerSystem | Where-Object { $_.Model -eq 'VMware Virtual Platform' -or $_.Model -eq 'Virtual Machine' }).Count -gt 0
     if($IsVirtual){
@@ -34,13 +36,16 @@ function Start-EasyRaidCheck{
     if ($supportedcontrollers.'Controller Type' -match "LSI"){
         # LSI
         $raidarraydetails, $AllDrives, $virtualdrives, $FailedDrives, $FailedVirtualDrives, $MissingDrives  = Get-RaidControllerLSI -StorCLILocation $storecli64
-
     } elseif ($supportedcontrollers.'Controller Type' -match "HP"){
         # HP
         $raidarraydetails, $AllDrives, $virtualdrives, $faileddrives                                        = Get-RaidControllerHP -hpCLIlocation $ssacli -hpADUlocation $ssaducli -ControllerName ($($supportedcontrollers.'Controller Name') | Select-object -first 1)
     } elseif ($supportedcontrollers.'Controller Type' -match "PERC"){
         # PERC
         $raidarraydetails, $AllDrives, $virtualdrives, $faileddrives, $FailedVirtualDrives, $MissingDrives  = Get-RaidControllerPERC -percCLILocation $perccli64
+    } elseif ($supportedcontrollers.'Controller Type' -match "VROC"){
+        # VROC
+        $raidarraydetails, $AllDrives, $virtualdrives, $faileddrives, $FailedVirtualDrives, $MissingDrives  = Get-RaidControllerVROC -vrocCLILocation $vroccli
+        $vroconly = $true
     } else {
         Write-Output "No Supported Controllers"
         $supported = $false
@@ -48,8 +53,24 @@ function Start-EasyRaidCheck{
         $raidarraydetails.Add([PSCustomObject]@{
             Supported          = $false
         })
-
     }
+    if (($supportedcontrollers.'Controller Type' -match "VROC") -and ($supported -ne $false)-and ($vroconly -ne $true)){
+        # VROC
+        $raidarraydetails2, $AllDrives2, $virtualdrives2, $faileddrives2, $FailedVirtualDrives2, $MissingDrives2  = Get-RaidControllerVROC -vrocCLILocation $vroccli
+        $raidarraydetails.AddRange($raidarraydetails2)
+        $AllDrives.AddRange($AllDrives2)
+        $virtualdrives.AddRange($virtualdrives2)
+        if ($faileddrives2){
+            $faileddrives.AddRange($faileddrives2)
+        }
+        if ($FailedVirtualDrives2){
+            $FailedVirtualDrives.AddRange($FailedVirtualDrives2)
+        }
+        if ($MissingDrives2){
+            $MissingDrives.AddRange($MissingDrives2)
+        }
+    }
+
     # Retrieve Smart Details using CrystalDiskInfo if set to true
     if ($Smartinfo -eq $true) {
         $smartalldrives, $smartFailedDrives = Get-SMARTInfo -CDIPath $DiskInfo64

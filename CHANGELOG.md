@@ -1,5 +1,14 @@
 # Changelog for EasyRaidCheck
 
+## [1.5.0] - 31-10-2024
+
+### Added
+
+- Added basic Intel VROC Support
+- Added VROC cli runtime
+
+### Fixed
+
 ## [1.4.2] - 30-10-2024
 
 ### Added
