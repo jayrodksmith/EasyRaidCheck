@@ -4,11 +4,12 @@ function Get-RaidControllerPERC {
         [string]$percCLILocation = 'C:\ProgramData\EasyRaidCheck\Dell\perccli64.exe'
     )
 
-    Get-RaidControllerPERCPreReq -PERCCLILocation $percCLILocation
+    Get-RaidControllerPERCPreReq -percLocation $percCLILocation
 
     $alldrives              = New-Object System.Collections.Generic.List[Object]
     $missingdrives          = New-Object System.Collections.Generic.List[Object]
     $failedvirtualdrives    = New-Object System.Collections.Generic.List[Object]
+    $faileddrives           = New-Object System.Collections.Generic.List[Object]
     $raidarraydetails       = New-Object System.Collections.Generic.List[Object]
     $virtualdrivesgroup     = New-Object System.Collections.Generic.List[Object]
     $virtualdrives          = New-Object System.Collections.Generic.List[Object]

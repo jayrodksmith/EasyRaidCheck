@@ -9,6 +9,7 @@ function Get-RaidControllerLSI {
     $alldrives              = New-Object System.Collections.Generic.List[Object]
     $missingdrives          = New-Object System.Collections.Generic.List[Object]
     $failedvirtualdrives    = New-Object System.Collections.Generic.List[Object]
+    $faileddrives           = New-Object System.Collections.Generic.List[Object]
     $raidarraydetails       = New-Object System.Collections.Generic.List[Object]
     $virtualdrivesgroup     = New-Object System.Collections.Generic.List[Object]
     $virtualdrives          = New-Object System.Collections.Generic.List[Object]

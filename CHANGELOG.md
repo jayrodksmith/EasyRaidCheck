@@ -1,6 +1,17 @@
 # Changelog for EasyRaidCheck
 
-## [Unreleased]
+## [1.4.2] - 30-10-2024
+
+### Added
+
+- Version output when script runs on first line
+
+### Fixed
+
+- Fixed failed drives array (CjStaal)
+- Fixed perclocation to Get-RaidControllerPERCPreReq function (CjStaal)
+
+## [1.4.1] - 02-06-2024
 
 ### Added
 

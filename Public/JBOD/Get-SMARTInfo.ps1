@@ -14,7 +14,7 @@ function Get-SMARTInfo {
     }
     
     $smartalldrives = @()
-
+    $smartfaileddrives = @()
     $drive = $null
 
     Get-Content -Path "C:\ProgramData\EasyRaidCheck\Crystaldiskinfo\DiskInfo.txt" | ForEach-Object {

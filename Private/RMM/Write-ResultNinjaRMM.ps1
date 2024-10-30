@@ -9,7 +9,7 @@ function Write-ResultNinjaRMM {
         [System.Collections.Generic.List[Object]]$resultraidarraydetails     = '',
         [System.Collections.Generic.List[Object]]$resultAllDrives,
         [System.Collections.Generic.List[Object]]$resultAllvirtual,
-        [string]$resultfaileddrives         = ''
+        [System.Collections.Generic.List[Object]]$resultfaileddrives = ''
     )
     if (-not (Get-Command -Name "Ninja-Property-Set" -ErrorAction SilentlyContinue)) {
         $errorMessage = "Error: NinjaRMM module not found, not writing to NinjaRMM."

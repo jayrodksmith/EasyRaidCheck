@@ -23,6 +23,7 @@ function Start-EasyRaidCheck{
         $DiskInfo64                         = "C:\ProgramData\EasyRaidCheck\Crystaldiskinfo\DiskInfo64.exe"
 
     )
+    Write-Output "EasyRaidCheck Version 1.4.2"
     # Determine if the system is virtual
     $IsVirtual = @(Get-CimInstance -ClassName Win32_ComputerSystem | Where-Object { $_.Model -eq 'VMware Virtual Platform' -or $_.Model -eq 'Virtual Machine' }).Count -gt 0
     if($IsVirtual){
