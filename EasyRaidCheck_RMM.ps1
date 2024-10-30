@@ -12,6 +12,7 @@ function Get-RaidControllers{
     $lsiPatterns = "*lsi*", "*megaraid*", "*Intel(R) Integrated RAID Module*", "*Intel(R) RAID Controller*", "*Intel Embedded Server RAID Technology II*","*ServeRAID*", "*megasas*", "*Avago*","*Lenovo ThinkServer RAID*", "*ThinkSystem RAID*", "*Asustek pike 2208*", "*ASUSTEK PIKE II*","*Intel(R) Integrated RAID RS3*", "*SAS3008*","*SAS3108*","*SAS2208*","*Gigabyte MR-3108*","*MSI S101B IMR*","*SAS3004*","*ASRR_M3108*"
     $percPattern = "*PERC*"
     $hpPattern = "*Smart Array*", "*Adaptec SmartHBA-SA*", "*Microchip Adaptec HBA 1000*"
+    $vrocPattern = "*VROC*"
     $results = @() # Initialize an empty array to store results
 
     # Find LSI
@@ -49,7 +50,19 @@ function Get-RaidControllers{
                 $found = $true
             }
         }
-    }    
+    }
+    # Find VROC
+    foreach ($controller in $controllers) {
+        foreach ($pattern in $vrocPattern) {
+            if ($controller.DriverName -like $pattern) {
+                $results += [PSCustomObject]@{
+                    "Controller Name" = $controller.Name
+                    "Controller Type" = "VROC"
+                }
+                $found = $true
+            }
+        }
+    }         
     return $results, $controllers
 }
 
@@ -72,13 +85,15 @@ function Start-EasyRaidCheck{
         [string]$ssacli                     = 'C:\ProgramData\EasyRaidCheck\HP\ssacli.exe',         # Will download from HP if missing
         [string]$ssaducli                   = 'C:\ProgramData\EasyRaidCheck\HP\ssaducli.exe',       # Will download from HP if missing
         # PERC Details
-        [string]$perccli64                  = 'C:\ProgramData\EasyRaidCheck\Dell\perccli64.exe',   # Will download from my github if missing
+        [string]$perccli64                  = 'C:\ProgramData\EasyRaidCheck\Dell\perccli64.exe',    # Will download from my github if missing
+        # VROC Details
+        [string]$vroccli                    = 'C:\ProgramData\EasyRaidCheck\VROC\IntelVROCCli.exe',   # Will download from my github if missing
         # CrystalDiskInfo Details
         [boolean]$Smartinfo                 = $true ,                                               # This will download CrystalDiskInfo if missing
         $DiskInfo64                         = "C:\ProgramData\EasyRaidCheck\Crystaldiskinfo\DiskInfo64.exe"
 
     )
-    Write-Output "EasyRaidCheck Version 1.4.2"
+    Write-Output "EasyRaidCheck Version 1.5.0"
     # Determine if the system is virtual
     $IsVirtual = @(Get-CimInstance -ClassName Win32_ComputerSystem | Where-Object { $_.Model -eq 'VMware Virtual Platform' -or $_.Model -eq 'Virtual Machine' }).Count -gt 0
     if($IsVirtual){
@@ -89,13 +104,16 @@ function Start-EasyRaidCheck{
     if ($supportedcontrollers.'Controller Type' -match "LSI"){
         # LSI
         $raidarraydetails, $AllDrives, $virtualdrives, $FailedDrives, $FailedVirtualDrives, $MissingDrives  = Get-RaidControllerLSI -StorCLILocation $storecli64
-
     } elseif ($supportedcontrollers.'Controller Type' -match "HP"){
         # HP
         $raidarraydetails, $AllDrives, $virtualdrives, $faileddrives                                        = Get-RaidControllerHP -hpCLIlocation $ssacli -hpADUlocation $ssaducli -ControllerName ($($supportedcontrollers.'Controller Name') | Select-object -first 1)
     } elseif ($supportedcontrollers.'Controller Type' -match "PERC"){
         # PERC
         $raidarraydetails, $AllDrives, $virtualdrives, $faileddrives, $FailedVirtualDrives, $MissingDrives  = Get-RaidControllerPERC -percCLILocation $perccli64
+    } elseif ($supportedcontrollers.'Controller Type' -match "VROC"){
+        # VROC
+        $raidarraydetails, $AllDrives, $virtualdrives, $faileddrives, $FailedVirtualDrives, $MissingDrives  = Get-RaidControllerVROC -vrocCLILocation $vroccli
+        $vroconly = $true
     } else {
         Write-Output "No Supported Controllers"
         $supported = $false
@@ -103,8 +121,24 @@ function Start-EasyRaidCheck{
         $raidarraydetails.Add([PSCustomObject]@{
             Supported          = $false
         })
-
     }
+    if (($supportedcontrollers.'Controller Type' -match "VROC") -and ($supported -ne $false)-and ($vroconly -ne $true)){
+        # VROC
+        $raidarraydetails2, $AllDrives2, $virtualdrives2, $faileddrives2, $FailedVirtualDrives2, $MissingDrives2  = Get-RaidControllerVROC -vrocCLILocation $vroccli
+        $raidarraydetails.AddRange($raidarraydetails2)
+        $AllDrives.AddRange($AllDrives2)
+        $virtualdrives.AddRange($virtualdrives2)
+        if ($faileddrives2){
+            $faileddrives.AddRange($faileddrives2)
+        }
+        if ($FailedVirtualDrives2){
+            $FailedVirtualDrives.AddRange($FailedVirtualDrives2)
+        }
+        if ($MissingDrives2){
+            $MissingDrives.AddRange($MissingDrives2)
+        }
+    }
+
     # Retrieve Smart Details using CrystalDiskInfo if set to true
     if ($Smartinfo -eq $true) {
         $smartalldrives, $smartFailedDrives = Get-SMARTInfo -CDIPath $DiskInfo64
@@ -666,6 +700,266 @@ function Get-RaidControllerLSIPreReq {
         }
     }else{
         Write-Verbose "LSI Tools already exists"
+    }
+}
+
+function Get-RaidControllerVROC {
+    [CmdletBinding()]
+    param (
+        [string]$vrocCLILocation = 'C:\ProgramData\EasyRaidCheck\VROC\IntelVROCCli.exe'
+    )
+
+    Get-RaidControllerVROCPreReq -vrocLocation $vrocCLILocation
+
+    $alldrives              = New-Object System.Collections.Generic.List[Object]
+    $missingdrives          = New-Object System.Collections.Generic.List[Object]
+    $failedvirtualdrives    = New-Object System.Collections.Generic.List[Object]
+    $faileddrives           = New-Object System.Collections.Generic.List[Object]
+    $raidarraydetails       = New-Object System.Collections.Generic.List[Object]
+    $virtualdrivesgroup     = New-Object System.Collections.Generic.List[Object]
+    $virtualdrives          = New-Object System.Collections.Generic.List[Object]
+
+    # Get all Device and Volume Information
+    try {
+        # Run command for DISK INFORMATION (-d) to get all devices
+        $diskOutput = & $vrocCLILocation -I -d
+        $diskLines = $diskOutput -split "`r?`n"
+
+        # Initialize an array for device objects (all disks)
+        $deviceInfoList = @()
+        $currentDeviceInfo = @{ }
+
+        # Parse DISK INFORMATION into objects
+        foreach ($line in $diskLines) {
+            if ($line -match "^ID:\s+(.+)") {
+                # Each "ID" starts a new device entry
+                if ($currentDeviceInfo.Count -gt 0) { $deviceInfoList += [PSCustomObject]$currentDeviceInfo }
+                $currentDeviceInfo = @{ "ID" = $matches[1].Trim(); "VolumeName" = $null } # Initialize VolumeName as null
+            } elseif ($line -match "^(.+?):\s+(.+)$") {
+                $currentDeviceInfo[$matches[1].Trim()] = $matches[2].Trim()
+            }
+        }
+        # Add the last device entry
+        if ($currentDeviceInfo.Count -gt 0) { $deviceInfoList += [PSCustomObject]$currentDeviceInfo }
+
+        # Run command for VOLUME INFORMATION (-v) to get volume and associated disks
+        $volumeOutput = & $vrocCLILocation -I -v
+        $volumeLines = $volumeOutput -split "`r?`n"
+
+        # Initialize variables for volume information, disk parsing within volumes, and array for all volumes
+        $volumeObjs = @()
+        $volumeInfo = @{ }
+        $currentVolumeDisks = @()
+        $isDiskSection = $false
+        $volumeName = ""
+
+        foreach ($line in $volumeLines) {
+            if ($line -match "^--VOLUME INFORMATION--") {
+                # Start of Volume Information section; reset for new volume
+                if ($volumeInfo.Count -gt 0) {
+                    # Add the previous volume object to volume list
+                    $volumeInfo["Disks"] = $currentVolumeDisks
+                    $volumeObjs += [PSCustomObject]$volumeInfo
+                }
+                $volumeInfo = @{}
+                $currentVolumeDisks = @()
+                $isDiskSection = $false
+            }
+            elseif ($line -match "^Name:\s+(.+)$") {
+                # Capture the volume name for current volume
+                $volumeName = $matches[1].Trim()
+                $volumeInfo["Name"] = $volumeName
+            }
+            elseif ($line -match "^--DISKS IN VOLUME") {
+                # Start of Disks section within the current volume
+                $isDiskSection = $true
+            }
+            elseif ($line -match "^(.+?):\s+(.+)$") {
+                $key = $matches[1].Trim()
+                $value = $matches[2].Trim()
+                
+                if ($isDiskSection) {
+                    # Disk information within a volume
+                    if ($key -eq "ID") {
+                        # Find matching disk in device list and add volume name
+                        $disk = $deviceInfoList | Where-Object { $_.ID -eq $value }
+                        if ($disk) {
+                            $disk.VolumeName = $volumeName
+                            # Add disk to the current volume's disk list
+                            $currentVolumeDisks += $disk
+                        }
+                    }
+                } else {
+                    # General Volume information
+                    $volumeInfo[$key] = $value
+                }
+            }
+        }
+    
+        # Add the last volume to the volume list
+        if ($volumeInfo.Count -gt 0) {
+            $volumeInfo["Disks"] = $currentVolumeDisks
+            $volumeObjs += [PSCustomObject]$volumeInfo
+        }
+        
+        foreach ($physicaldrive in $deviceInfoList) {
+            $RowColour = switch ($($physicaldrive.State)) {
+                { $_ -eq 'Normal' } { "success"; break }
+                default { "danger" }
+            }
+            function Convert-GBtoTB {
+                param (
+                    [string]$sizeString
+                )
+            
+                # Check if the size string contains "GB"
+                if ($sizeString -match "([0-9.]+)\s*GB") {
+                    # Extract the numeric part and convert it to TB
+                    $sizeInGB = [float]$matches[1]
+                    $sizeInTB = $sizeInGB / 1024
+                    return "{0:N2} TB" -f $sizeInTB
+                }
+                else {
+                    # Return the original size if it's not in GB
+                    return $sizeString
+                }
+            }
+            
+            $alldrives.Add([PSCustomObject]@{
+                Controller          = "VROC"
+                Array               = $($physicaldrive.'VolumeName')
+                DriveNumber         = $($physicaldrive.ID)
+                Port                = $($physicaldrive.'Root Port Offset')
+                Bay                 = $null
+                Status              = $($physicaldrive.State)
+                Reason              = $null
+                Size                = Convert-GBtoTB -sizeString $($physicaldrive.Size)
+                Interface           = $($physicaldrive.'Disk Type')
+                Serial              = $($physicaldrive.'Serial Number')
+                Model               = $($physicaldrive.Model)
+                'Temp'              = $null
+                'Max Temp'          = $null
+                'Smart Status'      = $null
+                'Power On Hours'    = $null
+                'DriveLetter'       = $null
+                RowColour           = $RowColour
+            })
+        }
+            # Get Virtual Drive Status
+            foreach ($VirtualDrive in $volumeObjs) {
+                $RowColour = switch ($($VirtualDrive.State)) {
+                    { $_ -eq 'Normal' } { "success"; break }
+                    default { "danger" }
+                }
+                $virtualdrives.Add([PSCustomObject]@{
+                    Controller      = 'VROC'
+                    Array           = $($VirtualDrive.'Name')
+                    Type            = "RAID" + $($VirtualDrive.'Raid Level')
+                    Status          = $($VirtualDrive.'State')
+                    Access          = $null
+                    Cache           = $($VirtualDrive.'Cache Policy')
+                    ReadAhead       = $null
+                    WriteBack       = $null
+                    Size            = $($VirtualDrive.'Size')
+                    Name            = $($VirtualDrive.'Name')
+                    RowColour       = $RowColour
+                })
+            }
+    } catch {
+        $ScriptError = "vrocCLI Command has Failed: $($_.Exception.Message)"
+        # exit
+    }
+
+    try {
+        # Run command to capture the full controller information output
+        $controllerOutput = & $vrocCLILocation -I -c
+        $controllerLines = $controllerOutput -split "`r?`n"
+
+        # Initialize hashtable for controller information
+        $controllerInfo = @{}
+        $isControllerSection = $false
+
+        # Parse only the Controller Information section
+        foreach ($line in $controllerLines) {
+            if ($line -match "^--CONTROLLER INFORMATION--") {
+                # Start of Controller Information section
+                $isControllerSection = $true
+                continue
+            }
+            elseif ($line -match "^--ARRAY INFORMATION--") {
+                # End of Controller Information section
+                break
+            }
+
+            # Capture key-value pairs if in the Controller Information section
+            if ($isControllerSection -and $line -match "^(.+?):\s+(.+)$") {
+                $key = $matches[1].Trim()
+                $value = $matches[2].Trim()
+                $controllerInfo[$key] = $value
+            }
+        }
+
+        $FailedVirtualDrives        = $virtualdrives | Where-Object { $_.Status -ne "Normal" }
+        $FailedDrives               = $alldrives | Where-Object { $_.Status -ne "Normal" }
+        $MissingDrives              = $alldrives | Where-Object { $_.Status -eq "Msng" }
+
+        if ($FailedDrives -or $MissingDrives) {
+            $RAIDphysicalstatus = "Not Healthy"
+        } else {
+            $RAIDphysicalstatus = "Healthy"
+        }
+
+        if ($FailedVirtualDrives) {
+            $RAIDStatus = "Not Healthy"
+        } else {
+            $RAIDStatus = "Healthy"
+        }
+
+        $raidarraydetails.Add([PSCustomObject]@{
+            Controller          = 'VROC'
+            Model               = $($controllerInfo.Name)
+            Serial              = $null
+            Firmware            = $null
+            Driver              = $null
+            'Rebuild Status'    = $null
+            'Rebuild Remaining' = $null
+            ReadAhead           = $null
+            WriteBack           = $null
+            VirtualStatus       = $RAIDStatus
+            PhysicalStatus      = $RAIDphysicalstatus
+            RowColour           = if (($RAIDStatus -eq 'Not Healthy') -or ($RAIDphysicalstatus -eq 'Not Healthy')) { "danger" } elseif ($rebuildpercentage) { 'warning' } else { "success" }
+        })
+    } catch {
+        $ScriptError = "vrocCLI Command has Failed: $($_.Exception.Message)"
+        # exit
+    }
+    return $raidarraydetails, $alldrives, $virtualdrives, $FailedDrives, $FailedVirtualDrives, $MissingDrives
+}
+
+
+function Get-RaidControllerVROCPreReq {
+    [CmdletBinding()]
+    param (
+        $vrocurl = "https://raw.githubusercontent.com/jayrodksmith/EasyRaidCheck/main/Public/VROC/IntelVROCCli.exe", # URL for IntelVROCCli
+        $vrocLocation = "",
+        $vrocfolder = "C:\ProgramData\EasyRaidCheck\VROC"
+    )
+    # Check if the folder exists
+    if (-not (Test-Path -Path $vrocfolder)) {
+        # If it doesn't exist, create it
+        $newfolder = New-Item -Path $vrocfolder -ItemType Directory -erroraction SilentlyContinue | Out-null
+    } 
+    if (-not(Test-Path -Path $vrocLocation -PathType Leaf)) {
+        [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12
+        try {
+            Write-Verbose "VROC Tools downloading and extracting"
+            Invoke-WebRequest -Uri $vrocurl -OutFile $vrocLocation
+        }catch{
+            Write-Error "An error occurred: $_"
+            exit 888
+        }
+    }else{
+        Write-Verbose "VROC Tools already exists"
     }
 }
 
